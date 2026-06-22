@@ -346,8 +346,8 @@ function render(){
 
   el.innerHTML = `
   <div class="card">
-    <h1>Paid Items</h1>
-    ${(o.items || []).map(i=>`<div class="item"><div><b>${i.qty} x ${i.name}</b><br><span class="muted">${money(i.price)} each</span></div><b>${money(i.total)}</b></div>`).join("") || "<p>No paid items.</p>"}
+    <h1>Order Items</h1>
+    ${(o.items || []).map(i=>`<div class="item"><div><b>${i.qty} x ${i.name}</b><br><span class="muted">${money(i.price)} each</span></div><b>${money(i.total)}</b></div>`).join("") || "<p>No order items.</p>"}
     ${(o.requestedItems||[]).length ? `<h2>Requested Items</h2>` + o.requestedItems.map(i=>`<div class="item"><div><b>${i}</b><br><span class="muted">Price to be confirmed</span></div><b>TBC</b></div>`).join("") : ""}
   </div>
 
