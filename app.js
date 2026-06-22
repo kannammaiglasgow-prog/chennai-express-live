@@ -158,6 +158,57 @@ function save(){
   updateCartCount(); 
 }
 function priceOf(p){ return p.offer_price || p.price; }
+async function saveOrderToSupabase(orderData){
+  if(!window.ceSupabase){
+    return {ok:false, message:"Supabase is not connected."};
+  }
+  try{
+    const orderRow = {
+      order_id: orderData.orderId,
+      customer_name: orderData.name,
+      whatsapp_number: orderData.phone,
+      order_type: orderData.type,
+      delivery_address: orderData.address || null,
+      postcode: orderData.postcode || null,
+      payment_method: orderData.paymentMethod || null,
+      subtotal: Number(orderData.subtotal || 0),
+      delivery_charge: Number(orderData.delivery || 0),
+      total: Number(orderData.total || 0),
+      reward_points_earned: Math.floor(Number(orderData.subtotal || 0) * 10),
+      reward_points_used: Number(orderData.rewardPointsUsed || 0),
+      reward_points_remaining: Number(orderData.rewardPointsRemaining || 0),
+      status: "pending",
+      customer_note: orderData.notes || null
+    };
+
+    const {data: savedOrder, error: orderError} = await ceSupabase
+      .from("orders")
+      .insert(orderRow)
+      .select("id")
+      .single();
+
+    if(orderError) throw orderError;
+
+    const itemRows = (orderData.items || []).map(item => ({
+      order_id: savedOrder.id,
+      product_name: item.name,
+      quantity: Number(item.qty || 1),
+      unit_price: Number(item.price || 0),
+      line_total: Number(item.total || 0),
+      status: "available"
+    }));
+
+    if(itemRows.length){
+      const {error: itemsError} = await ceSupabase.from("order_items").insert(itemRows);
+      if(itemsError) throw itemsError;
+    }
+
+    return {ok:true};
+  }catch(error){
+    console.error("Order save failed", error);
+    return {ok:false, message:error.message || "Order save failed."};
+  }
+}
 const CATEGORY_FILTERS = [
   {label:"All", terms:[]},
   {label:"Rice", terms:["rice", "flakes"]},
@@ -1011,7 +1062,7 @@ function clearCartAfterOrder(){
   showToast("Order sent. Cart cleared.");
 }
 
-function sendWhatsAppOrder(){
+async function sendWhatsAppOrder(){
   try{
     if(!validateCartStock(true)) return;
     const lines = cartLines();
@@ -1084,6 +1135,11 @@ function sendWhatsAppOrder(){
       delivery: d.charge || 0,
       total: d.total || subtotal()
     };
+
+    const saveResult = await saveOrderToSupabase(orderData);
+    if(!saveResult.ok){
+      alert("Order WhatsApp message will open, but the admin dashboard may not update because the order could not save to Supabase: " + saveResult.message);
+    }
 
     let encoded = "";
     try{

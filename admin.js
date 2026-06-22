@@ -411,6 +411,49 @@ function renderDashboard(){
   document.getElementById("rewardClaims").innerText = "Demo";
 }
 
+async function loadOrdersFromSupabase(){
+  if(!window.ceSupabase){
+    renderOrders();
+    renderDashboard();
+    return;
+  }
+  try{
+    const {data, error} = await ceSupabase
+      .from("orders")
+      .select("*")
+      .order("created_at", {ascending:false});
+
+    if(error) throw error;
+
+    if(Array.isArray(data)){
+      orders = data.map(o => ({
+        db_id:o.id,
+        order_id:o.order_id,
+        customer_name:o.customer_name,
+        whatsapp_number:o.whatsapp_number,
+        order_type:o.order_type,
+        payment_method:o.payment_method,
+        status:o.status || "pending",
+        collection_date:o.collection_date || "",
+        collection_time:o.collection_time || "",
+        delivery_date:o.delivery_date || "",
+        delivery_time:o.delivery_time || "",
+        admin_note:o.admin_note || "",
+        subtotal:Number(o.subtotal || 0),
+        delivery_charge:Number(o.delivery_charge || 0),
+        total:Number(o.total || 0),
+        reward_points_used:Number(o.reward_points_used || 0),
+        reward_points_remaining:Number(o.reward_points_remaining || 0),
+        items:[]
+      }));
+    }
+  }catch(error){
+    console.error("Could not load Supabase orders", error);
+  }
+  renderOrders();
+  renderDashboard();
+}
+
 function normaliseSearchText(value){
   return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -715,9 +758,9 @@ function closeProductEditor(){
   document.body.style.overflow = "";
 }
 
-// Orders remain prototype in this v5
 function renderOrders(){
-  const html = `<div class="table">
+  const html = `<button class="primary" onclick="loadOrdersFromSupabase()">Refresh Orders</button>
+  <div class="table">
     <div class="row head"><div>Order</div><div>Customer</div><div>Total</div><div>Status</div><div>Actions</div></div>
     ${orders.map((o,i)=>`<div class="row">
       <div><b>${o.order_id}</b><br><small>${o.order_type}</small></div>
@@ -735,8 +778,17 @@ function renderOrders(){
   document.getElementById("orderList").innerHTML = html;
 }
 
-function setOrderStatus(i,status){
-  orders[i].status = status;
+async function setOrderStatus(i,status){
+  const order = orders[i];
+  if(!order) return;
+  order.status = status;
+  if(window.ceSupabase && order.db_id){
+    const {error} = await ceSupabase
+      .from("orders")
+      .update({status:status, updated_at:new Date().toISOString()})
+      .eq("id", order.db_id);
+    if(error) alert("Status changed on screen, but Supabase did not save it: " + error.message);
+  }
   renderOrders();
   renderDashboard();
 }
@@ -1016,6 +1068,7 @@ async function init(){
     renderOrders();
     renderCustomers();
     renderRewards();
+    await loadOrdersFromSupabase();
     await loadProductsFromSupabase();
   }catch(error){
     console.error(error);
