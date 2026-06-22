@@ -55,41 +55,12 @@ if(!o){
   el.innerHTML = "<div class='card'><h1>Order not found</h1><p>This invoice link is missing order data.</p></div>";
 }else{
   const items = o.items || [];
-  const removed = o.removedItems || [];
   const rewards = o.rewards || [];
-  const removedRewards = o.removedRewards || [];
   const requested = o.requestedItems || [];
 
   el.innerHTML = `
     <div class="card">
-      <h1>Customer Details</h1>
-      ${o.orderId ? `<div class="row"><span>Order ID</span><b>${o.orderId}</b></div>` : ""}
-      <div class="row"><span>Name</span><b>${o.name || ""}</b></div>
-      <div class="row"><span>WhatsApp</span><b>${o.phone || ""}</b></div>
-      <div class="row"><span>Order Type</span><b>${o.type || ""}</b></div>
-      ${o.postcode ? `<div class="row"><span>Postcode</span><b>${o.postcode}</b></div>` : ""}
-      ${o.address ? `<div class="row"><span>Address</span><b>${o.address}</b></div>` : ""}
-    </div>
-
-    <div class="card timing-card">
-      <h1>Confirmed Date & Time</h1>
-      <div class="row"><span>${o.type === "Collection" ? "Collection Date" : "Delivery Date"}</span><b>${(o.type === "Collection" ? o.collectionDate : o.deliveryDate) || "To be confirmed"}</b></div>
-      <div class="row"><span>${o.type === "Collection" ? "Collection Time" : "Delivery Time"}</span><b>${(o.type === "Collection" ? o.collectionTime : o.deliveryTime) || "To be confirmed"}</b></div>
-      ${o.adminTimingNote ? `<p><b>Note:</b> ${o.adminTimingNote}</p>` : ""}
-    </div>
-
-    ${removed.length ? `<div class="card removed">
-      <h1>Sorry, These Items Are Unavailable</h1>
-      ${removed.map(i=>`<div class="item"><div><b>${i.qty || 1} x ${i.name}</b><br><span>${i.reason || "Out of stock / unavailable"}</span></div><b>Removed</b></div>`).join("")}
-    </div>` : ""}
-
-    ${removedRewards.length ? `<div class="card removed">
-      <h1>Removed Free Gifts</h1>
-      ${removedRewards.map(r=>`<div class="item"><div><b>${r.name}</b><br><span>${r.reason || "Not enough points after order update"}</span></div><b>Removed</b></div>`).join("")}
-    </div>` : ""}
-
-    <div class="card">
-      <h1>Final Items</h1>
+      <h1>Paid Items</h1>
       ${items.length ? items.map(i=>`<div class="item"><div><b>${i.qty} x ${i.name}</b><br><span class="muted">${money(i.price)} each</span></div><b>${money(i.total)}</b></div>`).join("") : "<p>No paid items.</p>"}
       ${requested.length ? `<h2>Requested Items</h2>` + requested.map(i=>`<div class="item"><div><b>${i}</b><br><span class="muted">Price to be confirmed</span></div><b>TBC</b></div>`).join("") : ""}
     </div>
@@ -100,16 +71,14 @@ if(!o){
     </div>` : ""}
 
     <div class="card">
-      <h1>Final Summary</h1>
+      <h1>Total</h1>
       <div class="row"><span>Subtotal</span><b>${money(o.subtotal)}</b></div>
       <div class="row"><span>Delivery</span><b>${o.type === "Delivery" ? "May apply / to be confirmed" : money(o.delivery || 0)}</b></div>
       <div class="row total"><span>Total</span><span>${money(o.total)}</span></div>
-      <p><b>Payment:</b> ${o.paymentMethod || "Cash/Card on Collection or Delivery"}</p>
-      ${o.notes ? `<p><b>Notes:</b> ${o.notes}</p>` : ""}
     </div>
 
     <div class="notice">
-      This is a read-only invoice. If you need any changes, please reply to Chennai Express on WhatsApp.
+      This is a read-only order summary.
     </div>
   `;
 }

@@ -224,7 +224,7 @@ function sendUpdatedToCustomer(){
   }
 
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(o))));
-  const link = location.href.split("order.html")[0] + "customer_order.html#data=" + encoded;
+  const link = location.href.split("order.html")[0] + "customer_order.html?v=items-only#data=" + encoded;
 
   let msg = `CHENNAI EXPRESS - UPDATED ORDER\n\n`;
   msg += `Hi ${o.name || ""}, we have reviewed your order.\n\n`;
@@ -328,7 +328,7 @@ function confirmOrder(){
   }
 
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(o))));
-  const link = location.href.split("order.html")[0] + "customer_order.html#data=" + encoded;
+  const link = location.href.split("order.html")[0] + "customer_order.html?v=items-only#data=" + encoded;
   msg += `\nView your order:\n${link}\n\nThank you.`;
 
   window.open(`https://wa.me/${customerPhone}?text=${encodeURIComponent(msg)}`,"_blank");
