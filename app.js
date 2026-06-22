@@ -1093,7 +1093,7 @@ function sendWhatsAppOrder(){
     }
 
     const basePath = location.href.split("#")[0].replace(/index\.html.*$/,"");
-    const orderPageLink = `${basePath}order.html#data=${encoded}`;
+    const orderPageLink = `${basePath}order.html?admin=1#data=${encoded}`;
 
     let msg = `ðŸ›’ CHENNAI EXPRESS ORDER\n`;
     msg += `â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n\n`;

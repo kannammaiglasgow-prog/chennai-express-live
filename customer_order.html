@@ -72,7 +72,7 @@ if(!o){
     </div>
 
     <div class="card timing-card">
-      <h1>🕒 Confirmed Date & Time</h1>
+      <h1>Confirmed Date & Time</h1>
       <div class="row"><span>${o.type === "Collection" ? "Collection Date" : "Delivery Date"}</span><b>${(o.type === "Collection" ? o.collectionDate : o.deliveryDate) || "To be confirmed"}</b></div>
       <div class="row"><span>${o.type === "Collection" ? "Collection Time" : "Delivery Time"}</span><b>${(o.type === "Collection" ? o.collectionTime : o.deliveryTime) || "To be confirmed"}</b></div>
       ${o.adminTimingNote ? `<p><b>Note:</b> ${o.adminTimingNote}</p>` : ""}
@@ -95,8 +95,8 @@ if(!o){
     </div>
 
     ${rewards.length ? `<div class="card gifts">
-      <h1>🎁 Free Gifts Included</h1>
-      ${rewards.map(r=>`<div class="gift-row"><div class="gift-icon">${r.emoji || "🎁"}</div><div><b>${r.name}</b><br><span>${r.points || 0} points used</span></div><b>FREE</b></div>`).join("")}
+      <h1>Free Gifts Included</h1>
+      ${rewards.map(r=>`<div class="gift-row"><div class="gift-icon">${r.emoji || "Gift"}</div><div><b>${r.name}</b><br><span>${r.points || 0} points used</span></div><b>FREE</b></div>`).join("")}
     </div>` : ""}
 
     <div class="card">

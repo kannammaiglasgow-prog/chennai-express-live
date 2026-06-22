@@ -46,6 +46,7 @@ h1{font-size:22px}.row{display:flex;justify-content:space-between;border-bottom:
 </div>
 <script>
 const STORE_WHATSAPP = "447309736428";
+const IS_ADMIN_VIEW = new URLSearchParams(window.location.search).get("admin") === "1";
 
 function money(v){ return "£" + Number(v||0).toFixed(2); }
 
@@ -89,6 +90,9 @@ function readOrder(){
 }
 
 let o = readOrder();
+if(o && !IS_ADMIN_VIEW){
+  window.location.replace(location.href.split("order.html")[0] + "customer_order.html" + location.hash);
+}
 if(o){
   o.removedItems = o.removedItems || [];
   o.originalRewards = o.originalRewards || JSON.parse(JSON.stringify(o.rewards || []));
@@ -364,7 +368,7 @@ function render(){
         <div><b>${i.name}</b><br><small>${money(i.price)} each</small></div>
         <div>
           <div class="qty-controls">
-            <button onclick="changeQty(${idx},-1)">−</button>
+            <button onclick="changeQty(${idx},-1)">-</button>
             <b>${i.qty}</b>
             <button onclick="changeQty(${idx},1)">+</button>
           </div>
@@ -392,8 +396,8 @@ function render(){
   </div>
 
   ${(o.rewards||[]).length ? `<div class="card free-gifts-card">
-    <h1>🎁 Free Gifts Claimed</h1>
-    ${o.rewards.map(r=>`<div class="gift-row"><div class="gift-icon">${r.emoji || "🎁"}</div><div><b>${r.name}</b><br><span>${r.points || 0} points used</span></div><b>FREE</b></div>`).join("")}
+    <h1>Free Gifts Claimed</h1>
+    ${o.rewards.map(r=>`<div class="gift-row"><div class="gift-icon">${r.emoji || "Gift"}</div><div><b>${r.name}</b><br><span>${r.points || 0} points used</span></div><b>FREE</b></div>`).join("")}
     <div class="points-box">
       <div><span>Reward Points Used</span><b>${o.rewardPointsUsed || (o.rewards||[]).reduce((s,r)=>s+(r.points||0),0)}</b></div>
       <div><span>Reward Points Remaining</span><b>${o.rewardPointsRemaining || 0}</b></div>
