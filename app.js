@@ -158,6 +158,15 @@ function save(){
   updateCartCount(); 
 }
 function priceOf(p){ return p.offer_price || p.price; }
+function compactText(value){
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+function productTitle(p){
+  const name = String((p && p.name) || "").trim();
+  const pack = String((p && (p.pack || p.pack_size)) || "").trim();
+  if(!pack) return name;
+  return compactText(name).includes(compactText(pack)) ? name : `${name} - ${pack}`;
+}
 async function saveOrderToSupabase(orderData){
   if(!window.ceSupabase){
     return {ok:false, message:"Supabase is not connected."};
@@ -490,6 +499,7 @@ function scrollToOffers(){ document.getElementById("offersSection").scrollIntoVi
 function scrollToRewards(){ openCart(); }
 
 function card(p){
+  const title = productTitle(p);
   const old = p.offer_price ? `<span class="old">${money(p.price)}</span>` : "";
   const disabled = p.stock !== "In Stock";
   const qty = cart[p.id] || 0;
@@ -502,8 +512,8 @@ function card(p){
   return `<div class="product-card ${disabled?'out':''} ${qty>0?'selected':''}">
     ${p.badge?`<div class="badge">${p.badge}</div>`:""}
     ${qty>0?`<div class="added-pill">${qty}</div>`:""}
-    <img class="product-img clickable" src="${p.image}" alt="${p.name}" referrerpolicy="no-referrer" loading="lazy" decoding="async" onclick="openProductPage(${p.id})">
-    <div class="name clickable" onclick="openProductPage(${p.id})">${p.name}</div>
+    <img class="product-img clickable" src="${p.image}" alt="${title}" referrerpolicy="no-referrer" loading="lazy" decoding="async" onclick="openProductPage(${p.id})">
+    <div class="name clickable" onclick="openProductPage(${p.id})">${title}</div>
     <div class="sub">${description || p.subcategory}</div>
     <div class="pack">${p.subcategory} - ${p.pack}</div>
     <div class="pack">${stockLabel(p)}</div>
@@ -517,11 +527,12 @@ function renderMostOrdered(){
 }
 
 function offerCard(p){
+  const title = productTitle(p);
   const description = cleanPublicDescription(p.description);
   return `<div class="offer-product-card">
-    <img src="${p.image}" alt="${p.name}" referrerpolicy="no-referrer" loading="lazy" decoding="async">
+    <img src="${p.image}" alt="${title}" referrerpolicy="no-referrer" loading="lazy" decoding="async">
     <div>
-      <b>${p.name}</b>
+      <b>${title}</b>
       <p>${description}</p>
       <div><span class="was">Was ${money(p.price)}</span> <span class="now">Now ${money(priceOf(p))}</span></div>
       <button onclick="addToCart(${p.id})">${tr("addOffer")}</button>
@@ -540,10 +551,10 @@ function renderOfferSlider(){
   }
   box.innerHTML = offers.map((p,i)=>`
     <div class="offer-slide ${i===0?'active':''}">
-      <img src="${p.image}" alt="${p.name}" referrerpolicy="no-referrer" loading="lazy" decoding="async">
+      <img src="${p.image}" alt="${productTitle(p)}" referrerpolicy="no-referrer" loading="lazy" decoding="async">
       <div>
         <p class="tag">SPECIAL OFFER</p>
-        <h2>${p.name}</h2>
+        <h2>${productTitle(p)}</h2>
         <div class="offer-price"><span class="was">Was ${money(p.price)}</span> <span class="now">Now ${money(priceOf(p))}</span></div>
         <button onclick="addToCart(${p.id})">${tr("addOffer")}</button>
       </div>
@@ -602,10 +613,11 @@ function renderTopSearchResults(){
 }
 
 function searchResultRow(p){
+  const title = productTitle(p);
   const qty = cart[p.id] || 0;
   return `<div class="search-result-row">
-    <img class="clickable" src="${p.image}" alt="${p.name}" referrerpolicy="no-referrer" loading="lazy" decoding="async" onclick="openProductPage(${p.id})">
-    <div><b class="clickable" onclick="openProductPage(${p.id})">${p.name}</b><br><small>${p.subcategory} - ${p.pack}</small><br><span>${money(priceOf(p))}</span></div>
+    <img class="clickable" src="${p.image}" alt="${title}" referrerpolicy="no-referrer" loading="lazy" decoding="async" onclick="openProductPage(${p.id})">
+    <div><b class="clickable" onclick="openProductPage(${p.id})">${title}</b><br><small>${p.subcategory} - ${p.pack}</small><br><span>${money(priceOf(p))}</span></div>
     ${qty>0 ? `<div class="mini-qty"><button onclick="changeQty(${p.id},-1)">-</button><b>${qty}</b><button onclick="addToCart(${p.id})">+</button></div>` : `<button onclick="addToCart(${p.id})">${tr("add")}</button>`}
   </div>`;
 }
@@ -890,8 +902,8 @@ function renderCartRewards(){
 function renderCart(){
   const lines = cartLines();
   const productHtml = lines.map(x=>`<div class="cart-item">
-    <img class="mini-img" src="${x.p.image}" alt="${x.p.name}" referrerpolicy="no-referrer" loading="lazy" decoding="async">
-    <div><b>${x.p.name}</b><br><small>${money(priceOf(x.p))}</small><br><span class="qty"><button onclick="changeQty(${x.p.id},-1)">-</button> ${x.qty} <button onclick="changeQty(${x.p.id},1)">+</button></span></div>
+    <img class="mini-img" src="${x.p.image}" alt="${productTitle(x.p)}" referrerpolicy="no-referrer" loading="lazy" decoding="async">
+    <div><b>${productTitle(x.p)}</b><br><small>${money(priceOf(x.p))}</small><br><span class="qty"><button onclick="changeQty(${x.p.id},-1)">-</button> ${x.qty} <button onclick="changeQty(${x.p.id},1)">+</button></span></div>
     <b>${money(priceOf(x.p)*x.qty)}</b>
   </div>`).join("");
 
@@ -1124,7 +1136,7 @@ async function sendWhatsAppOrder(){
       address: address,
       notes: notes,
       items: lines.map(x => ({
-        name: x.p.name,
+        name: productTitle(x.p),
         qty: x.qty,
         price: priceOf(x.p),
         total: priceOf(x.p) * x.qty
@@ -1174,7 +1186,7 @@ async function sendWhatsAppOrder(){
       msg += `\nORDER ITEMS\n`;
       msg += `--------------------\n`;
       lines.forEach((x,i)=> {
-        msg += `${i+1}. ${x.qty} x ${x.p.name}\n`;
+        msg += `${i+1}. ${x.qty} x ${productTitle(x.p)}\n`;
         msg += `   ${money(priceOf(x.p))} each = ${money(priceOf(x.p)*x.qty)}\n`;
       });
     }
@@ -1272,6 +1284,7 @@ function relatedProductsFor(p){
 function openProductPage(id){
   const p = PRODUCTS.find(x=>x.id===id);
   if(!p) return;
+  const title = productTitle(p);
   let modal = document.getElementById("productModal");
   if(!modal){
     modal = document.createElement("div");
@@ -1289,9 +1302,9 @@ function openProductPage(id){
         <button onclick="closeProductPage()">Back</button>
         <button onclick="closeProductPage()">X</button>
       </div>
-      <img class="detail-img" src="${p.image}" alt="${p.name}" referrerpolicy="no-referrer" decoding="async">
+      <img class="detail-img" src="${p.image}" alt="${title}" referrerpolicy="no-referrer" decoding="async">
       ${p.badge ? `<div class="detail-badge">${p.badge}</div>` : ""}
-      <h1>${p.name}</h1>
+      <h1>${title}</h1>
       <p class="detail-category">${p.category} - ${p.subcategory} - ${p.pack}</p>
       <div class="detail-price">${old}<span>${money(priceOf(p))}</span></div>
       <p class="detail-stock">${stockLabel(p)}</p>
@@ -1320,11 +1333,12 @@ function openProductPage(id){
 
 function relatedCard(r){
   const qty = cart[r.id] || 0;
+  const title = productTitle(r);
   return `
     <div class="related-card ${qty>0?'selected-related':''}">
       ${qty>0?`<div class="related-added">${qty}</div>`:""}
-      <img src="${r.image}" referrerpolicy="no-referrer" loading="lazy" decoding="async" onclick="openProductPageFromRelated(${r.id})">
-      <b onclick="openProductPageFromRelated(${r.id})">${r.name}</b>
+      <img src="${r.image}" alt="${title}" referrerpolicy="no-referrer" loading="lazy" decoding="async" onclick="openProductPageFromRelated(${r.id})">
+      <b onclick="openProductPageFromRelated(${r.id})">${title}</b>
       <span>${money(priceOf(r))}</span>
       ${qty>0 
         ? `<div class="related-qty">
