@@ -413,6 +413,7 @@ function renderDashboard(){
 
 async function loadOrdersFromSupabase(){
   if(!window.ceSupabase){
+    showAdminError("Orders dashboard is not connected to Supabase. Check supabase_config.js and refresh.");
     renderOrders();
     renderDashboard();
     return;
@@ -452,6 +453,7 @@ async function loadOrdersFromSupabase(){
     }
   }catch(error){
     console.error("Could not load Supabase orders", error);
+    showAdminError("Orders could not load from Supabase: " + (error.message || "Please run SUPABASE_ORDERS_POLICY_FIX.sql in Supabase SQL Editor."));
   }
   renderOrders();
   renderDashboard();
@@ -762,7 +764,9 @@ function closeProductEditor(){
 }
 
 function renderOrders(){
+  const emptyMessage = orders.length ? "" : `<div class="card"><b>No orders found</b><p>If customer placed an order, run SUPABASE_ORDERS_POLICY_FIX.sql in Supabase and then click Refresh Orders.</p></div>`;
   const html = `<button class="primary" onclick="loadOrdersFromSupabase()">Refresh Orders</button>
+  ${emptyMessage}
   <div class="table">
     <div class="row head order-row"><div>Order</div><div>Customer</div><div>Total</div><div>Status</div><div>Actions</div></div>
     ${orders.map((o,i)=>`<div class="row order-row order-click" onclick="openOrderDetail(${i})">
