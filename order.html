@@ -91,8 +91,10 @@ function readOrder(){
 }
 
 let o = readOrder();
-if(o && !IS_ADMIN_VIEW){
-  window.location.replace(location.href.split("order.html")[0] + "customer_order.html" + location.hash);
+if(o){
+  const queryData = new URLSearchParams(location.search).get("data");
+  const rawData = queryData || decodeURIComponent(location.hash.replace("#data=",""));
+  window.location.replace(location.href.split("order.html")[0] + "customer_order.html?view=items-only&data=" + encodeURIComponent(rawData));
 }
 if(o){
   o.removedItems = o.removedItems || [];
@@ -343,53 +345,6 @@ function render(){
   recalc();
 
   el.innerHTML = `
-  <div class="card">
-    <h1>Order Details</h1>
-    <div class="row"><span>Customer</span><b>${o.name || ""}</b></div>
-    <div class="row"><span>WhatsApp</span><b>${o.phone || ""}</b></div>
-    <div class="row"><span>Order Type</span><b>${o.type || ""}</b></div>
-    ${o.postcode ? `<div class="row"><span>Postcode</span><b>${o.postcode}</b></div>` : ""}
-    ${o.address ? `<div class="row"><span>Address</span><b>${o.address}</b></div>` : ""}
-  </div>
-
-  <div class="admin-panel">
-    <h1>Admin Edit Order</h1>
-    <p class="muted">If an item is unavailable, change quantity or remove it, then send the updated order link to customer.</p>
-    <div class="timing-box">
-      <h2>${timingLabel()} Date & Time</h2>
-      <label>${timingLabel()} Date</label>
-      <input id="adminDate" type="date" value="${o.type === "Collection" ? (o.collectionDate || "") : (o.deliveryDate || "")}">
-      <label>${timingLabel()} Time</label>
-      <input id="adminTime" type="time" value="${o.type === "Collection" ? (o.collectionTime || "") : (o.deliveryTime || "")}">
-      <label>Note optional</label>
-      <textarea id="adminTimingNote" placeholder="Example: Please collect after 6 PM">${o.adminTimingNote || ""}</textarea>
-    </div>
-    ${(o.items || []).map((i,idx)=>`
-      <div class="edit-item">
-        <div><b>${i.name}</b><br><small>${money(i.price)} each</small></div>
-        <div>
-          <div class="qty-controls">
-            <button onclick="changeQty(${idx},-1)">-</button>
-            <b>${i.qty}</b>
-            <button onclick="changeQty(${idx},1)">+</button>
-          </div>
-          <button class="remove-btn" onclick="removeItem(${idx})">Remove</button>
-        </div>
-      </div>
-    `).join("")}
-    ${(o.removedItems || []).length ? `<div class="removed-box"><h2>Removed / Out of Stock Items</h2>${o.removedItems.map(i=>`<div><b>${i.qty || 1} x ${i.name}</b><br><small>${i.reason || "Unavailable"}</small></div>`).join("")}</div>` : ""}
-    ${(o.removedRewards || []).length ? `<div class="removed-box"><h2>Removed Free Gifts</h2>${o.removedRewards.map(r=>`<div><b>${r.name}</b><br><small>${r.reason}</small></div>`).join("")}</div>` : ""}
-    <button class="btn" onclick="sendUpdatedToCustomer()">Send Read-Only Invoice to Customer</button>
-    <button class="btn" onclick="confirmOrder()" style="background:#111">Confirm Order</button>
-  </div>
-
-  <div class="card timing-preview">
-    <h1>${timingLabel()} Information</h1>
-    <div class="row"><span>${timingLabel()} Date</span><b>${(o.type === "Collection" ? o.collectionDate : o.deliveryDate) || "To be confirmed"}</b></div>
-    <div class="row"><span>${timingLabel()} Time</span><b>${(o.type === "Collection" ? o.collectionTime : o.deliveryTime) || "To be confirmed"}</b></div>
-    ${o.adminTimingNote ? `<p><b>Note:</b> ${o.adminTimingNote}</p>` : ""}
-  </div>
-
   <div class="card">
     <h1>Paid Items</h1>
     ${(o.items || []).map(i=>`<div class="item"><div><b>${i.qty} x ${i.name}</b><br><span class="muted">${money(i.price)} each</span></div><b>${money(i.total)}</b></div>`).join("") || "<p>No paid items.</p>"}
