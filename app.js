@@ -1093,36 +1093,18 @@ function sendWhatsAppOrder(){
     }
 
     const basePath = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}`;
-    const orderPageLink = `${basePath}order.html?admin=1&data=${encodeURIComponent(encoded)}`;
+    const orderPageLink = `${basePath}customer_order.html?view=items-only&data=${encodeURIComponent(encoded)}`;
 
-    let msg = `CHENNAI EXPRESS ORDER\n`;
+    let msg = `CHENNAI EXPRESS - MY ORDER\n`;
     msg += `--------------------\n\n`;
     msg += `Customer: ${name}\n`;
     msg += `WhatsApp: ${phone}\n`;
     if(postcode) msg += `Postcode: ${postcode}\n`;
     msg += `Order Type: ${type}\n`;
-    if(type === "Delivery"){
-      msg += `Delivery charge may apply. We will confirm delivery charge and delivery time via WhatsApp.\n`;
-    }else{
-      msg += `Collection point: 203 Willows Lane, Bolton, BL3 4AZ\n`;
-      msg += `Collection hours: Tuesday - Sunday 11:00 AM - 9:00 PM. Monday Closed.\n`;
-    }
     if(address) msg += `Address: ${address}\n`;
 
-    msg += `\nCOLLECTION / DELIVERY TIME\n`;
-    msg += `--------------------\n`;
-    if(type === "Collection"){
-      msg += `Collection Point: ${STORE_COLLECTION_INFO.collectionPoint}\n`;
-      msg += `Collection Hours: ${STORE_COLLECTION_INFO.collectionHours}\n`;
-      msg += `${STORE_COLLECTION_INFO.closedDay}\n`;
-      msg += `Collection time will be confirmed via WhatsApp after order review.\n`;
-    }else{
-      msg += `Delivery time will be confirmed via WhatsApp after order review.\n`;
-      msg += `Collection Point if needed: ${STORE_COLLECTION_INFO.collectionPoint}\n`;
-    }
-
     if(lines.length){
-      msg += `\nPAID ITEMS\n`;
+      msg += `\nORDER ITEMS\n`;
       msg += `--------------------\n`;
       lines.forEach((x,i)=> {
         msg += `${i+1}. ${x.qty} x ${x.p.name}\n`;
@@ -1164,7 +1146,7 @@ function sendWhatsAppOrder(){
       msg += `Reference: ${BANK_TRANSFER_DETAILS.reference}\n`;
     }
     if(notes) msg += `Notes: ${notes}\n`;
-    msg += `\nOrder Preview Page:\n${orderPageLink}\n`;
+    msg += `\nThis is my order:\n${orderPageLink}\n`;
     msg += `\nThank you.`;
 
     const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
