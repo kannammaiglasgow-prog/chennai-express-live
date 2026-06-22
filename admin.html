@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chennai Express Admin Phase 1</title>
+<link rel="stylesheet" href="admin.css?v=20260622-text-fix-2">
+</head>
+<body>
+<header>
+  <h1>Chennai Express Admin</h1>
+  <p>Backend Phase 1 Starter</p>
+</header>
+
+<nav>
+  <button onclick="showTab('dashboard')">Dashboard</button>
+  <button onclick="showTab('products')">Products</button>
+  <button onclick="showTab('orders')">Orders</button>
+  <button onclick="showTab('customers')">Customers</button>
+  <button onclick="showTab('rewards')">Rewards</button>
+</nav>
+
+<div id="adminError" class="admin-error"></div>
+
+<main>
+  <section id="dashboard" class="tab active">
+    <h2>Dashboard</h2>
+    <div class="cards">
+      <div class="card"><b>Today Orders</b><span id="todayOrders">0</span></div>
+      <div class="card"><b>Pending Orders</b><span id="pendingOrders">0</span></div>
+      <div class="card"><b>Out of Stock</b><span id="outStock">0</span></div>
+      <div class="card"><b>Reward Claims</b><span id="rewardClaims">0</span></div>
+    </div>
+  </section>
+
+  <section id="products" class="tab">
+    <h2>Product Management</h2>
+    <p>Upload CSV exported from Excel. Columns: sku,name,category,subcategory,description,price,offer_price,pack_size,stock_qty,stock_status</p>
+    <input type="file" id="csvFile" accept=".csv" onchange="previewCSV(event)">
+    <button onclick="downloadTemplate()">Download CSV Template</button>
+    <div id="csvPreview"></div>
+
+    <h3>Quick Product Editor</h3>
+    <div class="form-grid">
+      <button onclick="exportLocalProducts()">Export Local Product Data</button>
+      <label class="file-action">Import Local Product Data
+        <input type="file" accept=".json" onchange="importLocalProducts(event)">
+      </label>
+    </div>
+    <div class="form-grid">
+      <input id="pName" placeholder="Product name">
+      <input id="pCategory" placeholder="Category">
+      <input id="pPrice" placeholder="Price">
+      <input id="pStock" placeholder="Stock qty">
+      <select id="pStatus">
+        <option value="in_stock">In Stock</option>
+        <option value="low_stock">Low Stock</option>
+        <option value="out_of_stock">Out of Stock</option>
+      </select>
+      <button onclick="addLocalProduct()">Add Product Demo</button>
+    </div>
+    <div class="admin-search-bar">
+      <input id="productSearch" placeholder="Search products by name, SKU, category or pack" oninput="renderProducts()">
+      <button onclick="clearProductSearch()">Clear</button>
+    </div>
+    <div id="productList"></div>
+  </section>
+
+  <section id="orders" class="tab">
+    <h2>Orders Panel</h2>
+    <p>Admin can accept, edit, mark out of stock, send updated invoice, confirm collection/delivery time.</p>
+    <div id="orderList"></div>
+  </section>
+
+  <section id="customers" class="tab">
+    <h2>Customer Management</h2>
+    <p>No login required. WhatsApp number is the customer key.</p>
+    <div class="form-grid">
+      <input id="cName" placeholder="Customer name">
+      <input id="cPhone" placeholder="WhatsApp number">
+      <input id="cPoints" placeholder="Reward points">
+      <button onclick="addLocalCustomer()">Add Customer Demo</button>
+    </div>
+    <div id="customerList"></div>
+  </section>
+
+  <section id="rewards" class="tab">
+    <h2>Rewards Management</h2>
+    <div id="rewardList"></div>
+  </section>
+</main>
+
+<footer>
+  <p>Phase 1 frontend admin prototype. Connect to Supabase using supabase_config.example.js.</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase_config.js"></script>
+<script src="products.js?v=20260622-text-fix-2"></script>
+<script src="admin.js?v=20260622-text-fix-2"></script>
+</body>
+</html>
