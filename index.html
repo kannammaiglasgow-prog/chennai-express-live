@@ -1,0 +1,125 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chennai Express Marketplace</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <button class="icon-btn" onclick="toggleMenu()">Menu</button>
+  <div class="brand">
+    <div class="brand-main">CHENNAI <span>EXPRESS</span></div>
+    <div class="brand-sub">FOOD & GROCERY</div>
+  </div>
+  <button class="cart-icon" onclick="openCart()">Cart <span id="cartCount">0</span></button>
+</header>
+
+<section class="delivery-strip category-strip">
+  <button onclick="showRestaurantFood()">Restaurant</button>
+  <button onclick="showGrocery()">Grocery</button>
+</section>
+
+<main>
+  <section class="search-wrap">
+    <input id="searchInput" type="search" placeholder="Search products, brands and more..." oninput="handleSearchInput()">
+    <button onclick="handleSearchInput()">Search</button>
+  </section>
+  <section id="searchResultsTop" class="search-results-top"></section>
+
+  <section class="hero offer-hero">
+    <div class="offer-slider" id="offerSlider"></div>
+  </section>
+
+  
+
+  <section class="section-title">
+    <h2>Most Ordered This Week</h2>
+  </section>
+  <section class="product-row" id="mostOrdered"></section>
+
+  
+
+  <section class="offers-section" id="offersSection">
+    <h2>Special Product Offers</h2>
+    <p class="offer-note">Only discounted products will appear here.</p>
+    <div id="specialOffersGrid" class="special-offers-grid"></div>
+  </section>
+
+  <section class="section-title products-anchor">
+    <h2>All Products</h2>
+    <select id="categoryFilter" onchange="renderProducts()">
+      <option value="All">All Categories</option>
+    </select>
+  </section>
+  <section class="product-grid" id="productGrid"></section>
+
+  <section class="request-box">
+    <h2>Can't find what you need?</h2>
+    <p>Type the item name and add it to your cart. Price will be confirmed on WhatsApp.</p>
+    <input id="requestName" placeholder="Type item name e.g. MTR Rava Idli Mix">
+    <button onclick="addRequestedItemToCart()">Add Request to Cart</button>
+    <button class="contact-btn" onclick="contactUsWhatsApp()">Contact Us on WhatsApp</button>
+    <div id="requestAddedMsg" class="request-added-msg"></div>
+  </section>
+</main>
+
+<div id="cartDrawer" class="cart-drawer">
+  <div class="cart-header">
+    <h2>Your Cart</h2>
+    <button onclick="closeCart()">X</button>
+  </div>
+  <div id="cartItems"></div>
+  <div class="summary">
+    <p>Subtotal: <b id="subtotal">£0.00</b></p>
+    <p id="pointsEarned">You will earn 0 points</p>
+    <div id="cartRewardsBox" class="cart-rewards-box"></div>
+  </div>
+
+  <div class="checkout">
+    <h3>Checkout</h3>
+    <label><input type="radio" name="orderType" value="Collection" checked onchange="updateDelivery()"> <span>Collection</span></label>
+    <label><input type="radio" name="orderType" value="Delivery" onchange="updateDelivery()"> <span>Delivery</span></label>
+    <div id="deliveryNoticeBox" class="delivery-notice-box">
+      <b>Delivery Information</b><br>
+      Delivery charge may apply. We will confirm delivery charge and delivery time via WhatsApp after reviewing your order.
+    </div>
+    <div id="deliveryMsg" class="delivery-msg"></div>
+    <div class="collection-info-box">
+      <h4>Collection Information</h4>
+      <p><b>Collection Point:</b><br>203 Willows Lane, Bolton, BL3 4AZ</p>
+      <p><b>Collection Hours:</b><br>Tuesday - Sunday: 11:00 AM - 9:00 PM<br>Monday: Closed</p>
+      <p>After placing your order, we will confirm your collection or delivery time via WhatsApp.</p>
+    </div>
+
+    <input id="customerName" placeholder="Customer name">
+    <input id="postcode" class="delivery-only-field" placeholder="Postcode for delivery e.g. BL3 4AZ">
+    <input id="whatsappNumber" placeholder="Customer WhatsApp number">
+    <textarea id="address" class="delivery-only-field" placeholder="Full delivery address including postcode"></textarea>
+    <div class="payment-box">
+      <h4>Payment Method</h4>
+      <label><input type="radio" name="paymentMethod" value="Cash" checked onchange="updatePaymentBox()"> Cash</label>
+      <label><input type="radio" name="paymentMethod" value="Card" onchange="updatePaymentBox()"> Card</label>
+      <label><input type="radio" name="paymentMethod" value="Bank Transfer" onchange="updatePaymentBox()"> Bank Transfer</label>
+      <div id="bankDetailsBox" class="bank-details-box"></div>
+    </div>
+    <textarea id="notes" placeholder="Customer notes optional"></textarea>
+    <p>Delivery: <b id="deliveryCharge">£0.00</b></p>
+    <p class="total">Total: <b id="total">£0.00</b></p>
+    <button class="whatsapp-btn" onclick="sendWhatsAppOrder()">Send Order to WhatsApp</button>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <button onclick="window.scrollTo(0,0)">Home</button>
+  <button onclick="scrollToProducts()">Products</button>
+  <button onclick="openCart()">Cart</button>
+</nav>
+
+<script src="products.js?v=20260622-latest-photos"></script>
+<script src="app.js?v=20260622-latest-photos"></script>
+</body>
+</html>
+
+

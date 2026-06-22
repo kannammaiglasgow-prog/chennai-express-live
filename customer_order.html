@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chennai Express Invoice</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#f6f7f8;margin:0;color:#111}
+.wrap{max-width:720px;margin:auto;padding:16px}
+.card{background:white;border-radius:18px;padding:18px;margin:12px 0;box-shadow:0 4px 16px #0001}
+.logo{font-size:28px;font-weight:900;color:#d10b14;font-style:italic}.logo span{color:#087a36}
+h1{font-size:22px}.row{display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:10px 0;gap:12px}
+.item{display:grid;grid-template-columns:1fr auto;gap:10px;padding:10px 0;border-bottom:1px solid #eee}
+.total{font-size:24px;color:#d10b14;font-weight:900}.muted{color:#666}
+.success{background:#eaf7ef;border:1px solid #bfe8ce;color:#085c2d}
+.removed{background:#ffe7e8;border:1px solid #ffc1c5;color:#8a0008}
+.gifts{background:#f7fff9;border:2px solid #bfe8ce}
+.gift-row{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;background:#eaf7ef;border-radius:14px;padding:10px;margin:8px 0}
+.gift-icon{width:52px;height:52px;border-radius:12px;background:#087a36;color:white;display:flex;align-items:center;justify-content:center;font-size:26px}
+.notice{background:#fff8e1;border:1px solid #ffe0a3;border-radius:14px;padding:12px;margin:12px 0;color:#7a4a00}
+
+.timing-card{background:#eef7ff;border:1px solid #b8dcff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card success">
+    <div class="logo">CHENNAI <span>EXPRESS</span></div>
+    <h1>Order Invoice</h1>
+    <p>This is your updated order summary. Please check the details below.</p>
+  </div>
+  <div id="content"></div>
+</div>
+
+<script>
+function money(v){ return "£" + Number(v||0).toFixed(2); }
+
+function readOrder(){
+  try{
+    const hash = decodeURIComponent(location.hash.replace("#data=",""));
+    try{
+      return JSON.parse(decodeURIComponent(escape(atob(hash))));
+    }catch(e){
+      return JSON.parse(atob(hash));
+    }
+  }catch(e){
+    return null;
+  }
+}
+
+const o = readOrder();
+const el = document.getElementById("content");
+
+if(!o){
+  el.innerHTML = "<div class='card'><h1>Order not found</h1><p>This invoice link is missing order data.</p></div>";
+}else{
+  const items = o.items || [];
+  const removed = o.removedItems || [];
+  const rewards = o.rewards || [];
+  const removedRewards = o.removedRewards || [];
+  const requested = o.requestedItems || [];
+
+  el.innerHTML = `
+    <div class="card">
+      <h1>Customer Details</h1>
+      ${o.orderId ? `<div class="row"><span>Order ID</span><b>${o.orderId}</b></div>` : ""}
+      <div class="row"><span>Name</span><b>${o.name || ""}</b></div>
+      <div class="row"><span>WhatsApp</span><b>${o.phone || ""}</b></div>
+      <div class="row"><span>Order Type</span><b>${o.type || ""}</b></div>
+      ${o.postcode ? `<div class="row"><span>Postcode</span><b>${o.postcode}</b></div>` : ""}
+      ${o.address ? `<div class="row"><span>Address</span><b>${o.address}</b></div>` : ""}
+    </div>
+
+    <div class="card timing-card">
+      <h1>🕒 Confirmed Date & Time</h1>
+      <div class="row"><span>${o.type === "Collection" ? "Collection Date" : "Delivery Date"}</span><b>${(o.type === "Collection" ? o.collectionDate : o.deliveryDate) || "To be confirmed"}</b></div>
+      <div class="row"><span>${o.type === "Collection" ? "Collection Time" : "Delivery Time"}</span><b>${(o.type === "Collection" ? o.collectionTime : o.deliveryTime) || "To be confirmed"}</b></div>
+      ${o.adminTimingNote ? `<p><b>Note:</b> ${o.adminTimingNote}</p>` : ""}
+    </div>
+
+    ${removed.length ? `<div class="card removed">
+      <h1>Sorry, These Items Are Unavailable</h1>
+      ${removed.map(i=>`<div class="item"><div><b>${i.qty || 1} x ${i.name}</b><br><span>${i.reason || "Out of stock / unavailable"}</span></div><b>Removed</b></div>`).join("")}
+    </div>` : ""}
+
+    ${removedRewards.length ? `<div class="card removed">
+      <h1>Removed Free Gifts</h1>
+      ${removedRewards.map(r=>`<div class="item"><div><b>${r.name}</b><br><span>${r.reason || "Not enough points after order update"}</span></div><b>Removed</b></div>`).join("")}
+    </div>` : ""}
+
+    <div class="card">
+      <h1>Final Items</h1>
+      ${items.length ? items.map(i=>`<div class="item"><div><b>${i.qty} x ${i.name}</b><br><span class="muted">${money(i.price)} each</span></div><b>${money(i.total)}</b></div>`).join("") : "<p>No paid items.</p>"}
+      ${requested.length ? `<h2>Requested Items</h2>` + requested.map(i=>`<div class="item"><div><b>${i}</b><br><span class="muted">Price to be confirmed</span></div><b>TBC</b></div>`).join("") : ""}
+    </div>
+
+    ${rewards.length ? `<div class="card gifts">
+      <h1>🎁 Free Gifts Included</h1>
+      ${rewards.map(r=>`<div class="gift-row"><div class="gift-icon">${r.emoji || "🎁"}</div><div><b>${r.name}</b><br><span>${r.points || 0} points used</span></div><b>FREE</b></div>`).join("")}
+    </div>` : ""}
+
+    <div class="card">
+      <h1>Final Summary</h1>
+      <div class="row"><span>Subtotal</span><b>${money(o.subtotal)}</b></div>
+      <div class="row"><span>Delivery</span><b>${o.type === "Delivery" ? "May apply / to be confirmed" : money(o.delivery || 0)}</b></div>
+      <div class="row total"><span>Total</span><span>${money(o.total)}</span></div>
+      <p><b>Payment:</b> ${o.paymentMethod || "Cash/Card on Collection or Delivery"}</p>
+      ${o.notes ? `<p><b>Notes:</b> ${o.notes}</p>` : ""}
+    </div>
+
+    <div class="notice">
+      This is a read-only invoice. If you need any changes, please reply to Chennai Express on WhatsApp.
+    </div>
+  `;
+}
+</script>
+</body>
+</html>
