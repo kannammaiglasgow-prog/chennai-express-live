@@ -201,7 +201,7 @@ function mergeLatestFileProductData(savedProducts){
   const fileProducts = typeof PRODUCTS !== "undefined" ? PRODUCTS : window.PRODUCTS;
   if(!Array.isArray(fileProducts) || !Array.isArray(savedProducts)) return savedProducts;
   const fileByKey = new Map(fileProducts.map(p => [productKey(p), p]).filter(([key]) => key));
-  return savedProducts.map(saved => {
+  const merged = savedProducts.map(saved => {
     const fileProduct = fileByKey.get(productKey(saved));
     if(!fileProduct) return saved;
     return {
@@ -225,6 +225,15 @@ function mergeLatestFileProductData(savedProducts){
       supplier:fileProduct.supplier || saved.supplier || saved.purchase_source || DEFAULT_SUPPLIER
     };
   });
+  const savedKeys = new Set(merged.map(productKey).filter(Boolean));
+  fileProducts.forEach(fileProduct => {
+    const key = productKey(fileProduct);
+    if(key && !savedKeys.has(key)){
+      merged.push(fileProduct);
+      savedKeys.add(key);
+    }
+  });
+  return merged;
 }
 
 function saveProductsToLocalStore(){
@@ -638,6 +647,7 @@ function openProductEditor(index){
         <datalist id="supplierOptions">
           <option value="Shanker & Co"></option>
           <option value="Costco"></option>
+          <option value="Bosco"></option>
           <option value="Booker"></option>
           <option value="Local Supplier"></option>
         </datalist>

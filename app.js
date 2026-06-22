@@ -250,7 +250,7 @@ function productKey(p){
 function mergeLatestFileProductData(savedProducts){
   if(!Array.isArray(PRODUCTS) || !Array.isArray(savedProducts)) return savedProducts;
   const fileByKey = new Map(PRODUCTS.map(p => [productKey(p), p]).filter(([key]) => key));
-  return savedProducts.map(saved => {
+  const merged = savedProducts.map(saved => {
     const fileProduct = fileByKey.get(productKey(saved));
     if(!fileProduct) return saved;
     return {
@@ -266,9 +266,19 @@ function mergeLatestFileProductData(savedProducts){
       subcategory:fileProduct.subcategory || saved.subcategory || "",
       units_per_case:fileProduct.units_per_case ?? saved.units_per_case,
       invoice_amount:fileProduct.invoice_amount ?? saved.invoice_amount,
-      invoice_qty:fileProduct.invoice_qty ?? saved.invoice_qty
+      invoice_qty:fileProduct.invoice_qty ?? saved.invoice_qty,
+      supplier:fileProduct.supplier || saved.supplier || ""
     };
   });
+  const savedKeys = new Set(merged.map(productKey).filter(Boolean));
+  PRODUCTS.forEach(fileProduct => {
+    const key = productKey(fileProduct);
+    if(key && !savedKeys.has(key)){
+      merged.push(fileProduct);
+      savedKeys.add(key);
+    }
+  });
+  return merged;
 }
 
 function validateCartStock(showAlert = true){
