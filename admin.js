@@ -3,6 +3,7 @@ let products = [];
 let pendingImageUpload = null;
 const ADMIN_PRODUCTS_STORAGE_KEY = "ce_admin_products";
 const ADMIN_REWARDS_STORAGE_KEY = "ce_rewards";
+const DEFAULT_SUPPLIER = "Shanker & Co";
 function showAdminError(message){
   const box = document.getElementById("adminError");
   if(box){
@@ -133,7 +134,8 @@ function dbProductToAdmin(p){
     allergy_information:p.allergy_information || "",
     ingredients:p.ingredients || "",
     is_vegetarian:p.is_vegetarian || "",
-    is_halal:p.is_halal || ""
+    is_halal:p.is_halal || "",
+    supplier:p.supplier || p.purchase_source || DEFAULT_SUPPLIER
   };
 }
 
@@ -161,7 +163,8 @@ function localProductToAdmin(p){
     allergy_information:"",
     ingredients:"",
     is_vegetarian:"",
-    is_halal:""
+    is_halal:"",
+    supplier:p.supplier || p.purchase_source || DEFAULT_SUPPLIER
   };
 }
 
@@ -185,7 +188,8 @@ function adminProductToFrontend(p, index){
     image:p.image || "",
     invoice_amount:p.invoice_amount,
     invoice_qty:p.invoice_qty,
-    units_per_case:p.units_per_case
+    units_per_case:p.units_per_case,
+    supplier:p.supplier || p.purchase_source || DEFAULT_SUPPLIER
   };
 }
 
@@ -217,7 +221,8 @@ function mergeLatestFileProductData(savedProducts){
       subcategory:fileProduct.subcategory || saved.subcategory || "",
       units_per_case:fileProduct.units_per_case ?? saved.units_per_case,
       invoice_amount:fileProduct.invoice_amount ?? saved.invoice_amount,
-      invoice_qty:fileProduct.invoice_qty ?? saved.invoice_qty
+      invoice_qty:fileProduct.invoice_qty ?? saved.invoice_qty,
+      supplier:fileProduct.supplier || saved.supplier || saved.purchase_source || DEFAULT_SUPPLIER
     };
   });
 }
@@ -471,7 +476,8 @@ function productSearchText(p){
     p.subcategory,
     p.pack_size,
     p.description,
-    p.stock_status
+    p.stock_status,
+    p.supplier
   ].join(" "));
 }
 
@@ -496,6 +502,7 @@ function renderProducts(){
           <b>${escapeHtml(p.name)}</b><br>
           <small>${escapeHtml(p.sku || "")} - ${escapeHtml(p.pack_size || "")}</small><br>
           <small>${escapeHtml(cleanPublicDescription(p.description))}</small>
+          <br><small><b>Supplier:</b> ${escapeHtml(p.supplier || DEFAULT_SUPPLIER)}</small>
           ${p.allergy_information ? `<br><small><b>Allergy:</b> ${escapeHtml(p.allergy_information)}</small>` : ""}
         </div>
       </div>
@@ -548,6 +555,7 @@ function addLocalProduct(){
     ingredients:"",
     is_vegetarian:"",
     is_halal:"",
+    supplier:DEFAULT_SUPPLIER,
     is_best_seller:false,
     is_special_offer:false
   });
@@ -623,6 +631,16 @@ function openProductEditor(index){
           <option value="low_stock" ${p.stock_status==="low_stock"?"selected":""}>Low Stock</option>
           <option value="out_of_stock" ${p.stock_status==="out_of_stock"?"selected":""}>Out of Stock</option>
         </select>
+      </label>
+
+      <label>Supplier / Cash & Carry
+        <input id="editSupplier" list="supplierOptions" value="${escapeHtml(p.supplier || DEFAULT_SUPPLIER)}" placeholder="Example: Shanker & Co">
+        <datalist id="supplierOptions">
+          <option value="Shanker & Co"></option>
+          <option value="Costco"></option>
+          <option value="Booker"></option>
+          <option value="Local Supplier"></option>
+        </datalist>
       </label>
 
       <label>Vegetarian / Non-Vegetarian
@@ -745,6 +763,7 @@ async function saveProductEdit(index){
   p.pack_size = document.getElementById("editPackSize").value.trim();
   p.stock_qty = Number(document.getElementById("editStockQty").value || 0);
   p.stock_status = document.getElementById("editStockStatus").value;
+  p.supplier = document.getElementById("editSupplier").value.trim() || DEFAULT_SUPPLIER;
   p.is_vegetarian = document.getElementById("editVeg").value;
   p.is_halal = document.getElementById("editHalal").value;
   p.is_best_seller = badge === "Best Seller";
