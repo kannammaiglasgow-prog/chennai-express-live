@@ -1303,7 +1303,6 @@ function openProductPage(id){
             ? `<div class="detail-qty"><button onclick="changeQty(${p.id},-1); refreshProductPageTop(${p.id})">-</button><b>${qty}</b><button onclick="addToCart(${p.id}); refreshProductPageTop(${p.id})">+</button></div>`
             : `<button class="detail-add" onclick="addToCart(${p.id}); refreshProductPageTop(${p.id})">${tr("addToCart")}</button>`
         }
-        <div class="detail-added-note">Cart updates automatically</div>
       </div>
       <h2>Related Items</h2>
       <div class="detail-related">
