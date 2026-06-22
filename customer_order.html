@@ -37,7 +37,8 @@ function money(v){ return "£" + Number(v||0).toFixed(2); }
 
 function readOrder(){
   try{
-    const hash = decodeURIComponent(location.hash.replace("#data=",""));
+    const queryData = new URLSearchParams(location.search).get("data");
+    const hash = queryData || decodeURIComponent(location.hash.replace("#data=",""));
     try{
       return JSON.parse(decodeURIComponent(escape(atob(hash))));
     }catch(e){

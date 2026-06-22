@@ -881,26 +881,26 @@ function deliveryChargeByRules(distance, orderValue){
 
   if(distance <= 3){
     if(orderValue >= 50){
-      return {allowed:true, charge:0, message:"âœ… Delivery available. Within 3 miles and order is Â£50+, so delivery is FREE."};
+      return {allowed:true, charge:0, message:"Delivery available. Within 3 miles and order is £50+, so delivery is FREE."};
     }
-    return {allowed:true, charge:3, message:"âœ… Delivery available. Within 3 miles. Delivery charge is Â£3. Spend Â£50+ for free delivery."};
+    return {allowed:true, charge:3, message:"Delivery available. Within 3 miles. Delivery charge is £3. Spend £50+ for free delivery."};
   }
 
   if(distance <= 10){
     if(orderValue >= 200){
-      return {allowed:true, charge:0, message:"âœ… Delivery available. Within 10 miles and order is Â£200+, so delivery is FREE."};
+      return {allowed:true, charge:0, message:"Delivery available. Within 10 miles and order is £200+, so delivery is FREE."};
     }
-    return {allowed:true, charge:10, message:"âœ… Delivery available. 3â€“10 miles. Delivery charge is Â£10. Spend Â£200+ for free delivery."};
+    return {allowed:true, charge:10, message:"Delivery available. 3-10 miles. Delivery charge is £10. Spend £200+ for free delivery."};
   }
 
   if(distance <= 20){
     if(orderValue >= 200){
-      return {allowed:true, charge:10, message:"âœ… Delivery available. 10â€“20 miles and order is Â£200+, delivery charge is Â£10."};
+      return {allowed:true, charge:10, message:"Delivery available. 10-20 miles and order is £200+, delivery charge is £10."};
     }
-    return {allowed:false, charge:0, message:"âŒ Delivery is not available for this postcode unless order is Â£200+. Collection only for this order."};
+    return {allowed:false, charge:0, message:"Delivery is not available for this postcode unless order is £200+. Collection only for this order."};
   }
 
-  return {allowed:false, charge:0, message:"âŒ This postcode is outside our delivery area. Collection only from 203 Willows Lane, Bolton, BL3 4AZ."};
+  return {allowed:false, charge:0, message:"This postcode is outside our delivery area. Collection only from 203 Willows Lane, Bolton, BL3 4AZ."};
 }
 
 function checkPostcodeDistance(){
@@ -956,7 +956,7 @@ function updateDelivery(){
       postcodeBox.value = "";
       postcodeBox.required = false;
     }
-    msg = "ðŸ“¦ Collection selected. Name and WhatsApp number only. Collection point: 203 Willows Lane, Bolton, BL3 4AZ. Collection time will be confirmed via WhatsApp.";
+    msg = "Collection selected. Name and WhatsApp number only. Collection point: 203 Willows Lane, Bolton, BL3 4AZ. Collection time will be confirmed via WhatsApp.";
     document.getElementById("deliveryCharge").innerText = money(0);
   }else{
     if(deliveryNotice) deliveryNotice.style.display = "block";
@@ -968,7 +968,7 @@ function updateDelivery(){
       postcodeBox.style.display = "block";
       postcodeBox.required = true;
     }
-    msg = "ðŸšš " + tr("deliverySelected");
+    msg = tr("deliverySelected");
     document.getElementById("deliveryCharge").innerText = tr("mayApply");
   }
 
@@ -1072,7 +1072,7 @@ function sendWhatsAppOrder(){
       rewards: claimedRewards.map(x => ({
         name: x.name,
         points: x.points,
-        emoji: x.emoji || "ðŸŽ",
+        emoji: x.emoji || "Gift",
         image: x.image || ""
       })),
       rewardPointsUsed: rewardPointsUsed,
@@ -1092,25 +1092,25 @@ function sendWhatsAppOrder(){
       encoded = btoa(JSON.stringify(orderData));
     }
 
-    const basePath = location.href.split("#")[0].replace(/index\.html.*$/,"");
-    const orderPageLink = `${basePath}order.html?admin=1#data=${encoded}`;
+    const basePath = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}`;
+    const orderPageLink = `${basePath}order.html?admin=1&data=${encodeURIComponent(encoded)}`;
 
-    let msg = `ðŸ›’ CHENNAI EXPRESS ORDER\n`;
-    msg += `â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n\n`;
-    msg += `ðŸ‘¤ Customer: ${name}\n`;
-    msg += `ðŸ“± WhatsApp: ${phone}\n`;
-    if(postcode) msg += `ðŸ“ Postcode: ${postcode}\n`;
-    msg += `ðŸšš Order Type: ${type}\n`;
+    let msg = `CHENNAI EXPRESS ORDER\n`;
+    msg += `--------------------\n\n`;
+    msg += `Customer: ${name}\n`;
+    msg += `WhatsApp: ${phone}\n`;
+    if(postcode) msg += `Postcode: ${postcode}\n`;
+    msg += `Order Type: ${type}\n`;
     if(type === "Delivery"){
-      msg += `â„¹ï¸ Delivery charge may apply. We will confirm delivery charge and delivery time via WhatsApp.\n`;
+      msg += `Delivery charge may apply. We will confirm delivery charge and delivery time via WhatsApp.\n`;
     }else{
-      msg += `ðŸ“¦ Collection point: 203 Willows Lane, Bolton, BL3 4AZ\n`;
+      msg += `Collection point: 203 Willows Lane, Bolton, BL3 4AZ\n`;
       msg += `Collection hours: Tuesday - Sunday 11:00 AM - 9:00 PM. Monday Closed.\n`;
     }
-    if(address) msg += `ðŸ  Address: ${address}\n`;
+    if(address) msg += `Address: ${address}\n`;
 
-    msg += `\nðŸ•’ COLLECTION / DELIVERY TIME\n`;
-    msg += `â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n`;
+    msg += `\nCOLLECTION / DELIVERY TIME\n`;
+    msg += `--------------------\n`;
     if(type === "Collection"){
       msg += `Collection Point: ${STORE_COLLECTION_INFO.collectionPoint}\n`;
       msg += `Collection Hours: ${STORE_COLLECTION_INFO.collectionHours}\n`;
@@ -1122,8 +1122,8 @@ function sendWhatsAppOrder(){
     }
 
     if(lines.length){
-      msg += `\nðŸ§¾ PAID ITEMS\n`;
-      msg += `â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n`;
+      msg += `\nPAID ITEMS\n`;
+      msg += `--------------------\n`;
       lines.forEach((x,i)=> {
         msg += `${i+1}. ${x.qty} x ${x.p.name}\n`;
         msg += `   ${money(priceOf(x.p))} each = ${money(priceOf(x.p)*x.qty)}\n`;
@@ -1131,16 +1131,16 @@ function sendWhatsAppOrder(){
     }
 
     if(requestedCart.length){
-      msg += `\nðŸ”Ž CUSTOMER REQUESTED ITEMS\n`;
-      msg += `â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n`;
+      msg += `\nCUSTOMER REQUESTED ITEMS\n`;
+      msg += `--------------------\n`;
       requestedCart.forEach((r,i)=> {
         msg += `${i+1}. ${r.name} - Price to be confirmed\n`;
       });
     }
 
     if(claimedRewards.length){
-      msg += `\nðŸŽ FREE GIFTS CLAIMED\n`;
-      msg += `â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n`;
+      msg += `\nFREE GIFTS CLAIMED\n`;
+      msg += `--------------------\n`;
       claimedRewards.forEach((r,i)=> {
         msg += `${i+1}. ${r.name} - FREE (${r.points} points used)\n`;
       });
@@ -1148,23 +1148,23 @@ function sendWhatsAppOrder(){
       msg += `Reward Points Remaining: ${rewardPointsRemaining}\n`;
     }
 
-    msg += `\nðŸ’· SUMMARY\n`;
-    msg += `â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n`;
+    msg += `\nSUMMARY\n`;
+    msg += `--------------------\n`;
     msg += `Subtotal: ${money(subtotal())}\n`;
     msg += `Delivery: ${type === "Delivery" ? "May apply - to be confirmed" : money(0)}\n`;
     msg += `TOTAL: ${money((d.total || subtotal()))}\n`;
     if(requestedCart.length) msg += `Requested items are not included in total.\n`;
-    msg += `\nðŸ’³ Payment Method: ${paymentMethod}\n`;
+    msg += `\nPayment Method: ${paymentMethod}\n`;
     if(paymentMethod === "Bank Transfer"){
-      msg += `\nðŸ¦ BANK TRANSFER DETAILS\n`;
+      msg += `\nBANK TRANSFER DETAILS\n`;
       msg += `Bank Name: ${BANK_TRANSFER_DETAILS.bankName}\n`;
       msg += `Account Name: ${BANK_TRANSFER_DETAILS.accountName}\n`;
       msg += `Sort Code: ${BANK_TRANSFER_DETAILS.sortCode}\n`;
       msg += `Account Number: ${BANK_TRANSFER_DETAILS.accountNumber}\n`;
       msg += `Reference: ${BANK_TRANSFER_DETAILS.reference}\n`;
     }
-    if(notes) msg += `ðŸ“ Notes: ${notes}\n`;
-    msg += `\nðŸ”— Order Preview Page:\n${orderPageLink}\n`;
+    if(notes) msg += `Notes: ${notes}\n`;
+    msg += `\nOrder Preview Page:\n${orderPageLink}\n`;
     msg += `\nThank you.`;
 
     const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
@@ -1191,7 +1191,7 @@ function addRequestedItemToCart(){
   renderCart();
   const msgBox = document.getElementById("requestAddedMsg");
   if(msgBox){
-    msgBox.innerHTML = `âœ… <b>${item}</b> has been added to your cart as a requested item.<br>Need another product? Type it above and add again.`;
+    msgBox.innerHTML = `<b>${item}</b> has been added to your cart as a requested item.<br>Need another product? Type it above and add again.`;
     msgBox.classList.add("show");
   }
   showToast(`${item} added to cart as requested item`);

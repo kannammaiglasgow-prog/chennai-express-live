@@ -78,7 +78,8 @@ function formatUKWhatsAppNumber(phone){
 
 function readOrder(){
   try{
-    const hash = decodeURIComponent(location.hash.replace("#data=",""));
+    const queryData = new URLSearchParams(location.search).get("data");
+    const hash = queryData || decodeURIComponent(location.hash.replace("#data=",""));
     try{
       return JSON.parse(decodeURIComponent(escape(atob(hash))));
     }catch(e){
@@ -224,7 +225,7 @@ function sendUpdatedToCustomer(){
   }
 
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(o))));
-  const link = location.href.split("order.html")[0] + "customer_order.html?v=items-only#data=" + encoded;
+  const link = location.href.split("order.html")[0] + "customer_order.html?view=items-only&data=" + encodeURIComponent(encoded);
 
   let msg = `CHENNAI EXPRESS - UPDATED ORDER\n\n`;
   msg += `Hi ${o.name || ""}, we have reviewed your order.\n\n`;
@@ -328,7 +329,7 @@ function confirmOrder(){
   }
 
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(o))));
-  const link = location.href.split("order.html")[0] + "customer_order.html?v=items-only#data=" + encoded;
+  const link = location.href.split("order.html")[0] + "customer_order.html?view=items-only&data=" + encodeURIComponent(encoded);
   msg += `\nView your order:\n${link}\n\nThank you.`;
 
   window.open(`https://wa.me/${customerPhone}?text=${encodeURIComponent(msg)}`,"_blank");
