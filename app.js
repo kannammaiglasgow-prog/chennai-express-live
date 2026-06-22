@@ -1136,10 +1136,11 @@ async function sendWhatsAppOrder(){
       total: d.total || subtotal()
     };
 
-    const saveResult = await saveOrderToSupabase(orderData);
-    if(!saveResult.ok){
-      alert("Order WhatsApp message will open, but the admin dashboard may not update because the order could not save to Supabase: " + saveResult.message);
-    }
+    saveOrderToSupabase(orderData).then(saveResult => {
+      if(!saveResult.ok){
+        console.warn("Order dashboard save failed:", saveResult.message);
+      }
+    });
 
     let encoded = "";
     try{
