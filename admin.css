@@ -138,6 +138,22 @@ footer{text-align:center;color:#666;padding:20px}
   padding:8px 12px;
   font-weight:900;
 }
+.order-row{
+  grid-template-columns:1.2fr 1.2fr .7fr .8fr auto;
+}
+.order-editor-popup h3{
+  margin:14px 0 8px;
+}
+.removed-order-item{
+  opacity:.65;
+  background:#fff0f0;
+}
+.removed-order-item b{
+  text-decoration:line-through;
+}
+.order-add-grid{
+  grid-template-columns:1fr 120px auto;
+}
 .removed-admin{
   background:#ffe7e8;
   color:#8a0008;
@@ -177,6 +193,10 @@ footer{text-align:center;color:#666;padding:20px}
 }
 @media(max-width:700px){
   .admin-item-row{
+    grid-template-columns:1fr;
+  }
+  .order-row,
+  .order-add-grid{
     grid-template-columns:1fr;
   }
 }

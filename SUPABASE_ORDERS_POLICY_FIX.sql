@@ -30,3 +30,9 @@ drop policy if exists "prototype read order items" on order_items;
 create policy "prototype read order items"
 on order_items for select
 using (true);
+
+drop policy if exists "prototype update order items" on order_items;
+create policy "prototype update order items"
+on order_items for update
+using (true)
+with check (true);

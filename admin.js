@@ -444,6 +444,9 @@ async function loadOrdersFromSupabase(){
         total:Number(o.total || 0),
         reward_points_used:Number(o.reward_points_used || 0),
         reward_points_remaining:Number(o.reward_points_remaining || 0),
+        delivery_address:o.delivery_address || "",
+        postcode:o.postcode || "",
+        customer_note:o.customer_note || "",
         items:[]
       }));
     }
@@ -761,13 +764,14 @@ function closeProductEditor(){
 function renderOrders(){
   const html = `<button class="primary" onclick="loadOrdersFromSupabase()">Refresh Orders</button>
   <div class="table">
-    <div class="row head"><div>Order</div><div>Customer</div><div>Total</div><div>Status</div><div>Actions</div></div>
-    ${orders.map((o,i)=>`<div class="row">
+    <div class="row head order-row"><div>Order</div><div>Customer</div><div>Total</div><div>Status</div><div>Actions</div></div>
+    ${orders.map((o,i)=>`<div class="row order-row order-click" onclick="openOrderDetail(${i})">
       <div><b>${o.order_id}</b><br><small>${o.order_type}</small></div>
-      <div>${o.customer_name}<br><small>${o.whatsapp_number}</small></div>
+      <div>${escapeHtml(o.customer_name)}<br><small>${escapeHtml(o.whatsapp_number)}</small></div>
       <div>£${Number(o.total).toFixed(2)}</div>
       <div>${statusBadge(o.status)}</div>
-      <div class="actions">
+      <div class="actions" onclick="event.stopPropagation()">
+        <button class="green" onclick="openOrderDetail(${i})">View / Edit</button>
         <button class="green" onclick="setOrderStatus(${i},'confirmed')">Confirm</button>
         <button class="dark" onclick="setOrderStatus(${i},'preparing')">Preparing</button>
         <button class="green" onclick="setOrderStatus(${i},'ready')">Ready</button>
@@ -776,6 +780,327 @@ function renderOrders(){
     </div>`).join("")}
   </div>`;
   document.getElementById("orderList").innerHTML = html;
+}
+
+function adminMoney(value){
+  return "£" + Number(value || 0).toFixed(2);
+}
+
+function orderVisibleItems(order){
+  return (order.items || []).filter(item => item.status !== "removed" && Number(item.qty || item.quantity || 0) > 0);
+}
+
+function recalculateOrder(order){
+  const subtotal = orderVisibleItems(order).reduce((sum, item) => {
+    const qty = Number(item.qty || item.quantity || 0);
+    const price = Number(item.price || item.unit_price || 0);
+    item.qty = qty;
+    item.price = price;
+    item.total = Number((qty * price).toFixed(2));
+    return sum + item.total;
+  }, 0);
+  order.subtotal = Number(subtotal.toFixed(2));
+  order.delivery_charge = Number(order.delivery_charge || 0);
+  order.total = Number((order.subtotal + order.delivery_charge).toFixed(2));
+}
+
+async function loadOrderItems(index){
+  const order = orders[index];
+  if(!order || order.itemsLoaded || !window.ceSupabase || !order.db_id) return;
+  const {data, error} = await ceSupabase
+    .from("order_items")
+    .select("*")
+    .eq("order_id", order.db_id)
+    .order("created_at", {ascending:true});
+  if(error){
+    alert("Order items load ஆகலை: " + error.message);
+    return;
+  }
+  order.items = (data || []).map(item => ({
+    db_id:item.id,
+    name:item.product_name,
+    qty:Number(item.quantity || 0),
+    price:Number(item.unit_price || 0),
+    total:Number(item.line_total || 0),
+    status:item.status || "available"
+  }));
+  order.itemsLoaded = true;
+  recalculateOrder(order);
+}
+
+function orderDateValue(order){
+  return order.order_type === "Delivery" ? order.delivery_date : order.collection_date;
+}
+
+function orderTimeValue(order){
+  return order.order_type === "Delivery" ? order.delivery_time : order.collection_time;
+}
+
+async function openOrderDetail(index){
+  const order = orders[index];
+  if(!order) return;
+  await loadOrderItems(index);
+
+  let modal = document.getElementById("orderEditorModal");
+  if(!modal){
+    modal = document.createElement("div");
+    modal.id = "orderEditorModal";
+    modal.className = "product-editor-modal";
+    document.body.appendChild(modal);
+  }
+
+  const itemRows = (order.items || []).map((item, itemIndex) => `
+    <div class="admin-item-row ${item.status === "removed" ? "removed-order-item" : ""}">
+      <div>
+        <b>${escapeHtml(item.name)}</b><br>
+        <small>${adminMoney(item.price)} each ${item.status === "removed" ? "- removed" : ""}</small>
+      </div>
+      <div class="qty-controls">
+        <button onclick="changeOrderItemQty(${index},${itemIndex},-1)">-</button>
+        <b>${Number(item.qty || 0)}</b>
+        <button onclick="changeOrderItemQty(${index},${itemIndex},1)">+</button>
+      </div>
+      <div><b>${adminMoney(item.total)}</b></div>
+      <div class="actions">
+        <button class="red" onclick="removeOrderItem(${index},${itemIndex})">Remove</button>
+      </div>
+    </div>
+  `).join("");
+
+  const productOptions = products.map((p, pIndex) => `<option value="${pIndex}">${escapeHtml(p.name)} - ${adminMoney(p.offer_price || p.price)}</option>`).join("");
+  const dateLabel = order.order_type === "Delivery" ? "Delivery Date" : "Collection Date";
+  const timeLabel = order.order_type === "Delivery" ? "Delivery Time" : "Collection Time";
+
+  modal.innerHTML = `<div class="product-editor-popup order-editor-popup">
+    <div class="popup-head">
+      <h2>View / Edit Order</h2>
+      <button onclick="closeOrderDetail()">x</button>
+    </div>
+
+    <div class="detail-grid">
+      <div><b>Order</b><br>${escapeHtml(order.order_id)}</div>
+      <div><b>Customer</b><br>${escapeHtml(order.customer_name)}<br><small>${escapeHtml(order.whatsapp_number)}</small></div>
+      <div><b>Type</b><br>${escapeHtml(order.order_type)}</div>
+      <div><b>Total</b><br>${adminMoney(order.total)}</div>
+      <div><b>Status</b><br>${statusBadge(order.status)}</div>
+    </div>
+
+    <div class="timing-admin">
+      <h3>${escapeHtml(order.order_type)} Date & Time</h3>
+      <div class="editor-grid">
+        <label>${dateLabel}
+          <input id="orderDate" type="date" value="${escapeHtml(orderDateValue(order) || "")}">
+        </label>
+        <label>${timeLabel}
+          <input id="orderTime" type="time" value="${escapeHtml(orderTimeValue(order) || "")}">
+        </label>
+        <label>Status
+          <select id="orderStatus">
+            <option value="pending" ${order.status==="pending"?"selected":""}>Pending</option>
+            <option value="confirmed" ${order.status==="confirmed"?"selected":""}>Confirmed</option>
+            <option value="preparing" ${order.status==="preparing"?"selected":""}>Preparing</option>
+            <option value="ready" ${order.status==="ready"?"selected":""}>Ready</option>
+            <option value="completed" ${order.status==="completed"?"selected":""}>Completed</option>
+            <option value="cancelled" ${order.status==="cancelled"?"selected":""}>Cancelled</option>
+          </select>
+        </label>
+      </div>
+      <label>Admin Note
+        <textarea id="orderAdminNote" placeholder="Example: Please collect after 6 PM">${escapeHtml(order.admin_note || "")}</textarea>
+      </label>
+    </div>
+
+    <h3>Order Items</h3>
+    <div id="orderItemsBox">${itemRows || "<p>No items found for this order.</p>"}</div>
+
+    <div class="form-grid order-add-grid">
+      <select id="orderAddProduct">${productOptions}</select>
+      <input id="orderAddQty" type="number" min="1" value="1" placeholder="Qty">
+      <button onclick="addProductToOrder(${index})">Add Item</button>
+    </div>
+
+    <div class="summary-admin">
+      <div><span>Subtotal</span><b>${adminMoney(order.subtotal)}</b></div>
+      <div><span>Delivery</span><b>${adminMoney(order.delivery_charge)}</b></div>
+      <div><span>Total</span><b>${adminMoney(order.total)}</b></div>
+    </div>
+
+    <div class="actions big-actions">
+      <button class="green" onclick="saveOrderDetail(${index})">Save Order</button>
+      <button class="green" onclick="sendUpdatedOrderToCustomer(${index})">Send Order List to Customer</button>
+      <button class="dark" onclick="closeOrderDetail()">Close</button>
+    </div>
+  </div>`;
+
+  modal.classList.add("show");
+  document.body.style.overflow = "hidden";
+}
+
+function closeOrderDetail(){
+  const modal = document.getElementById("orderEditorModal");
+  if(modal) modal.classList.remove("show");
+  document.body.style.overflow = "";
+}
+
+function changeOrderItemQty(orderIndex, itemIndex, delta){
+  const order = orders[orderIndex];
+  const item = order && order.items && order.items[itemIndex];
+  if(!item) return;
+  item.status = "available";
+  item.qty = Math.max(1, Number(item.qty || 0) + delta);
+  item.total = Number((item.qty * Number(item.price || 0)).toFixed(2));
+  recalculateOrder(order);
+  openOrderDetail(orderIndex);
+}
+
+function removeOrderItem(orderIndex, itemIndex){
+  const order = orders[orderIndex];
+  const item = order && order.items && order.items[itemIndex];
+  if(!item) return;
+  item.status = "removed";
+  item.qty = 0;
+  item.total = 0;
+  recalculateOrder(order);
+  openOrderDetail(orderIndex);
+}
+
+function addProductToOrder(orderIndex){
+  const order = orders[orderIndex];
+  if(!order) return;
+  const productIndex = Number(document.getElementById("orderAddProduct").value);
+  const qty = Math.max(1, Number(document.getElementById("orderAddQty").value || 1));
+  const product = products[productIndex];
+  if(!product) return;
+  const price = Number(product.offer_price || product.price || 0);
+  order.items = order.items || [];
+  order.items.push({
+    product_db_id:product.db_id || null,
+    name:product.name,
+    qty:qty,
+    price:price,
+    total:Number((qty * price).toFixed(2)),
+    status:"available",
+    isNew:true
+  });
+  recalculateOrder(order);
+  openOrderDetail(orderIndex);
+}
+
+async function saveOrderDetail(index){
+  const order = orders[index];
+  if(!order) return;
+  const date = document.getElementById("orderDate").value;
+  const time = document.getElementById("orderTime").value;
+  order.status = document.getElementById("orderStatus").value;
+  order.admin_note = document.getElementById("orderAdminNote").value.trim();
+  if(order.order_type === "Delivery"){
+    order.delivery_date = date;
+    order.delivery_time = time;
+  }else{
+    order.collection_date = date;
+    order.collection_time = time;
+  }
+  recalculateOrder(order);
+
+  if(window.ceSupabase && order.db_id){
+    const orderUpdate = {
+      status:order.status,
+      admin_note:order.admin_note || null,
+      subtotal:order.subtotal,
+      delivery_charge:order.delivery_charge,
+      total:order.total,
+      collection_date:order.collection_date || null,
+      collection_time:order.collection_time || null,
+      delivery_date:order.delivery_date || null,
+      delivery_time:order.delivery_time || null,
+      updated_at:new Date().toISOString()
+    };
+    const {error: orderError} = await ceSupabase.from("orders").update(orderUpdate).eq("id", order.db_id);
+    if(orderError){
+      alert("Order save ஆகலை: " + orderError.message);
+      return;
+    }
+
+    for(const item of (order.items || [])){
+      const itemRow = {
+        product_name:item.name,
+        quantity:Number(item.qty || 0),
+        unit_price:Number(item.price || 0),
+        line_total:Number(item.total || 0),
+        status:item.status || "available"
+      };
+      if(item.db_id){
+        const {error:itemError} = await ceSupabase.from("order_items").update(itemRow).eq("id", item.db_id);
+        if(itemError){
+          alert("Item save ஆகலை: " + itemError.message);
+          return;
+        }
+      }else{
+        const {data:newItem, error:itemError} = await ceSupabase
+          .from("order_items")
+          .insert({...itemRow, order_id:order.db_id, product_id:item.product_db_id || null})
+          .select("id")
+          .single();
+        if(itemError){
+          alert("New item save ஆகலை: " + itemError.message);
+          return;
+        }
+        item.db_id = newItem.id;
+        item.isNew = false;
+      }
+    }
+  }
+
+  renderOrders();
+  renderDashboard();
+  openOrderDetail(index);
+  alert("Order saved.");
+}
+
+function orderPayloadForCustomer(order){
+  recalculateOrder(order);
+  return {
+    orderId:order.order_id,
+    name:order.customer_name,
+    phone:order.whatsapp_number,
+    type:order.order_type,
+    paymentMethod:order.payment_method,
+    items:orderVisibleItems(order).map(item => ({
+      name:item.name,
+      qty:Number(item.qty || 0),
+      price:Number(item.price || 0),
+      total:Number(item.total || 0)
+    })),
+    requestedItems:[],
+    rewards:[],
+    subtotal:order.subtotal,
+    delivery:order.delivery_charge,
+    total:order.total
+  };
+}
+
+function sendUpdatedOrderToCustomer(index){
+  const order = orders[index];
+  if(!order) return;
+  const payload = orderPayloadForCustomer(order);
+  let encoded = "";
+  try{
+    encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  }catch(e){
+    encoded = btoa(JSON.stringify(payload));
+  }
+  const basePath = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}`;
+  const link = `${basePath}customer_order.html?view=items-only&data=${encodeURIComponent(encoded)}`;
+  const timing = order.order_type === "Delivery"
+    ? [order.delivery_date, order.delivery_time].filter(Boolean).join(" ")
+    : [order.collection_date, order.collection_time].filter(Boolean).join(" ");
+  let message = `CHENNAI EXPRESS - ORDER LIST\n\nOrder: ${order.order_id}\nTotal: ${adminMoney(order.total)}\n`;
+  if(timing) message += `${order.order_type} Time: ${timing}\n`;
+  message += `\nView order:\n${link}`;
+  const rawPhone = String(order.whatsapp_number || "").replace(/\D/g, "");
+  const phone = rawPhone.startsWith("44") ? rawPhone : rawPhone ? "44" + rawPhone.replace(/^0/,"") : "";
+  const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  window.open(whatsappUrl, "_blank");
 }
 
 async function setOrderStatus(i,status){
