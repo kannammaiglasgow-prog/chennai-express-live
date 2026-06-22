@@ -256,6 +256,14 @@ function productKey(p){
   return String((p && (p.sku || p.id || p.name)) || "").toLowerCase().trim();
 }
 
+function hasOwnValue(obj, key){
+  return obj && Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function keepSaved(saved, fileProduct, key, fallback = ""){
+  return hasOwnValue(saved, key) ? saved[key] : (fileProduct && hasOwnValue(fileProduct, key) ? fileProduct[key] : fallback);
+}
+
 function mergeLatestFileProductData(savedProducts){
   if(!Array.isArray(PRODUCTS) || !Array.isArray(savedProducts)) return savedProducts;
   const fileByKey = new Map(PRODUCTS.map(p => [productKey(p), p]).filter(([key]) => key));
@@ -264,19 +272,29 @@ function mergeLatestFileProductData(savedProducts){
     if(!fileProduct) return saved;
     return {
       ...saved,
-      price:fileProduct.price ?? saved.price ?? 0,
-      offer_price:Object.prototype.hasOwnProperty.call(fileProduct, "offer_price") ? fileProduct.offer_price : (saved.offer_price ?? null),
-      stock:fileProduct.stock || saved.stock || "In Stock",
-      stock_qty:fileProduct.stock_qty ?? saved.stock_qty ?? saved.units_per_case ?? 0,
-      badge:fileProduct.badge ?? saved.badge ?? "",
-      image:fileProduct.image || saved.image || "",
-      description:cleanPublicDescription(fileProduct.description || saved.description),
-      pack:fileProduct.pack || saved.pack || "",
-      subcategory:fileProduct.subcategory || saved.subcategory || "",
-      units_per_case:fileProduct.units_per_case ?? saved.units_per_case,
-      invoice_amount:fileProduct.invoice_amount ?? saved.invoice_amount,
-      invoice_qty:fileProduct.invoice_qty ?? saved.invoice_qty,
-      supplier:fileProduct.supplier || saved.supplier || ""
+      category:keepSaved(saved, fileProduct, "category", "Grocery"),
+      subcategory:keepSaved(saved, fileProduct, "subcategory", ""),
+      price:keepSaved(saved, fileProduct, "price", 0),
+      normal_price:keepSaved(saved, fileProduct, "normal_price", saved.price ?? fileProduct.price ?? 0),
+      offer_price:keepSaved(saved, fileProduct, "offer_price", null),
+      stock:keepSaved(saved, fileProduct, "stock", "In Stock"),
+      stock_qty:keepSaved(saved, fileProduct, "stock_qty", saved.units_per_case ?? fileProduct.units_per_case ?? 0),
+      stock_status:keepSaved(saved, fileProduct, "stock_status", fileProduct.stock === "Out of Stock" ? "out_of_stock" : "in_stock"),
+      badge:keepSaved(saved, fileProduct, "badge", ""),
+      is_best_seller:!!keepSaved(saved, fileProduct, "is_best_seller", false),
+      is_special_offer:!!keepSaved(saved, fileProduct, "is_special_offer", false) || !!keepSaved(saved, fileProduct, "offer_price", null),
+      image:keepSaved(saved, fileProduct, "image", ""),
+      description:cleanPublicDescription(keepSaved(saved, fileProduct, "description", "")),
+      pack:keepSaved(saved, fileProduct, "pack", ""),
+      pack_size:keepSaved(saved, fileProduct, "pack_size", saved.pack || fileProduct.pack || ""),
+      units_per_case:keepSaved(saved, fileProduct, "units_per_case", undefined),
+      invoice_amount:keepSaved(saved, fileProduct, "invoice_amount", undefined),
+      invoice_qty:keepSaved(saved, fileProduct, "invoice_qty", undefined),
+      supplier:keepSaved(saved, fileProduct, "supplier", ""),
+      allergy_information:keepSaved(saved, fileProduct, "allergy_information", ""),
+      ingredients:keepSaved(saved, fileProduct, "ingredients", ""),
+      is_vegetarian:keepSaved(saved, fileProduct, "is_vegetarian", ""),
+      is_halal:keepSaved(saved, fileProduct, "is_halal", "")
     };
   });
   const savedKeys = new Set(merged.map(productKey).filter(Boolean));
