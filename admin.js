@@ -115,7 +115,9 @@ function numberOrNull(value){
 }
 
 function isSpecialOfferProduct(p){
-  return !!(p && (p.is_special_offer || p.badge === "Special Offer") && p.offer_price);
+  if(!p || !p.offer_price) return false;
+  if(hasOwnValue(p, "badge")) return p.badge === "Special Offer";
+  return !!p.is_special_offer;
 }
 
 function effectiveProductPrice(p){
@@ -156,6 +158,7 @@ function dbProductToAdmin(p){
 }
 
 function localProductToAdmin(p){
+  const badge = hasOwnValue(p, "badge") ? (p.badge || "") : (p.is_special_offer ? "Special Offer" : (p.is_best_seller ? "Best Seller" : ""));
   return {
     db_id:null,
     frontend_id:p.id || null,
@@ -171,8 +174,9 @@ function localProductToAdmin(p){
     image:p.image || "",
     stock_qty:Number(p.stock_qty || p.units_per_case || 1),
     stock_status:p.stock_status || (p.stock === "Out of Stock" ? "out_of_stock" : "in_stock"),
-    is_best_seller:!!p.is_best_seller || p.badge === "Best Seller",
-    is_special_offer:!!p.is_special_offer || p.badge === "Special Offer",
+    badge,
+    is_best_seller:badge === "Best Seller",
+    is_special_offer:badge === "Special Offer",
     invoice_amount:p.invoice_amount,
     invoice_qty:p.invoice_qty,
     units_per_case:p.units_per_case,
@@ -186,7 +190,8 @@ function localProductToAdmin(p){
 
 function adminProductToFrontend(p, index){
   const normalPrice = numberOrNull(p.normal_price) ?? numberOrNull(p.price) ?? 0;
-  const offerPrice = p.is_special_offer ? numberOrNull(p.offer_price) : null;
+  const badge = hasOwnValue(p, "badge") ? (p.badge || "") : (p.is_special_offer ? "Special Offer" : (p.is_best_seller ? "Best Seller" : ""));
+  const offerPrice = badge === "Special Offer" ? numberOrNull(p.offer_price) : null;
   return {
     id:p.frontend_id || p.id || index + 1,
     sku:p.sku || `CE-${String(index + 1).padStart(3,"0")}`,
@@ -201,9 +206,9 @@ function adminProductToFrontend(p, index){
     stock:p.stock_status === "out_of_stock" ? "Out of Stock" : "In Stock",
     stock_status:p.stock_status || "in_stock",
     stock_qty:Number.isFinite(Number(p.stock_qty)) ? Number(p.stock_qty) : 0,
-    badge:p.is_special_offer ? "Special Offer" : (p.is_best_seller ? "Best Seller" : ""),
-    is_best_seller:!!p.is_best_seller,
-    is_special_offer:!!p.is_special_offer,
+    badge,
+    is_best_seller:badge === "Best Seller",
+    is_special_offer:badge === "Special Offer",
     emoji:"ðŸ›’",
     description:cleanPublicDescription(p.description),
     image:p.image || "",
@@ -240,8 +245,8 @@ function mergeLatestFileProductData(savedProducts){
       stock_qty:keepSaved(saved, fileProduct, "stock_qty", saved.units_per_case ?? fileProduct.units_per_case ?? 0),
       stock_status:keepSaved(saved, fileProduct, "stock_status", fileProduct.stock === "Out of Stock" ? "out_of_stock" : "in_stock"),
       badge:keepSaved(saved, fileProduct, "badge", ""),
-      is_best_seller:!!keepSaved(saved, fileProduct, "is_best_seller", false),
-      is_special_offer:!!keepSaved(saved, fileProduct, "is_special_offer", false) || keepSaved(saved, fileProduct, "badge", "") === "Special Offer",
+      is_best_seller:keepSaved(saved, fileProduct, "badge", "") === "Best Seller",
+      is_special_offer:keepSaved(saved, fileProduct, "badge", "") === "Special Offer",
       image:keepSaved(saved, fileProduct, "image", ""),
       description:cleanPublicDescription(keepSaved(saved, fileProduct, "description", "")),
       pack:keepSaved(saved, fileProduct, "pack", ""),
@@ -358,7 +363,8 @@ function loadLocalProductsFallback(message){
 
 function adminProductToDb(p){
   const normalPrice = numberOrNull(p.normal_price) ?? numberOrNull(p.price) ?? 0;
-  const offerPrice = p.is_special_offer ? numberOrNull(p.offer_price) : null;
+  const special = hasOwnValue(p, "badge") ? p.badge === "Special Offer" : !!p.is_special_offer;
+  const offerPrice = special ? numberOrNull(p.offer_price) : null;
   return {
     sku:cleanText(p.sku),
     name:cleanText(p.name),
@@ -372,7 +378,7 @@ function adminProductToDb(p){
     stock_status:p.stock_status || "in_stock",
     stock_qty:Number.isFinite(Number(p.stock_qty)) ? Number(p.stock_qty) : 0,
     is_best_seller:!!p.is_best_seller,
-    is_special_offer:!!p.is_special_offer,
+    is_special_offer:special,
     allergy_information:cleanText(p.allergy_information),
     ingredients:cleanText(p.ingredients),
     is_vegetarian:cleanText(p.is_vegetarian),
@@ -808,6 +814,7 @@ async function saveProductEdit(index){
   p.supplier = document.getElementById("editSupplier").value.trim() || DEFAULT_SUPPLIER;
   p.is_vegetarian = document.getElementById("editVeg").value;
   p.is_halal = document.getElementById("editHalal").value;
+  p.badge = badge;
   p.is_best_seller = badge === "Best Seller";
   p.is_special_offer = badge === "Special Offer";
   p.image = document.getElementById("editImageUrl").value.trim();

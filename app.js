@@ -168,7 +168,9 @@ function save(){
   updateCartCount(); 
 }
 function isSpecialOfferProduct(p){
-  return !!(p && (p.is_special_offer || p.badge === "Special Offer") && p.offer_price);
+  if(!p || !p.offer_price) return false;
+  if(hasOwnValue(p, "badge")) return p.badge === "Special Offer";
+  return !!p.is_special_offer;
 }
 
 function normalPriceOf(p){ return Number(p && (p.normal_price || p.price) || 0); }
@@ -297,8 +299,8 @@ function mergeLatestFileProductData(savedProducts){
       stock_qty:keepSaved(saved, fileProduct, "stock_qty", saved.units_per_case ?? fileProduct.units_per_case ?? 0),
       stock_status:keepSaved(saved, fileProduct, "stock_status", fileProduct.stock === "Out of Stock" ? "out_of_stock" : "in_stock"),
       badge:keepSaved(saved, fileProduct, "badge", ""),
-      is_best_seller:!!keepSaved(saved, fileProduct, "is_best_seller", false),
-      is_special_offer:!!keepSaved(saved, fileProduct, "is_special_offer", false) || keepSaved(saved, fileProduct, "badge", "") === "Special Offer",
+      is_best_seller:keepSaved(saved, fileProduct, "badge", "") === "Best Seller",
+      is_special_offer:keepSaved(saved, fileProduct, "badge", "") === "Special Offer",
       image:keepSaved(saved, fileProduct, "image", ""),
       description:cleanPublicDescription(keepSaved(saved, fileProduct, "description", "")),
       pack:keepSaved(saved, fileProduct, "pack", ""),
