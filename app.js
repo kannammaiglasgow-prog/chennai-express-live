@@ -15,6 +15,16 @@ const BANK_TRANSFER_DETAILS = {
   reference: "Use your name as reference"
 };
 
+const SPECIAL_BANNERS = [
+  {
+    active: true,
+    title: "Bitter Gourd Special Offer",
+    desktopImage: "assets/banners/bitter-gourd-special-banner.png",
+    mobileImage: "assets/banners/bitter-gourd-special-banner.png",
+    target: "offers"
+  }
+];
+
 const FIXED_REWARDS = [
   {id:"free_chicken_roll_0", points:500, name:"Puli Satham 500ml Box", value:4.99, emoji:"", image:"https://rakskitchen.net/wp-content/uploads/2014/05/14097742883_de6b965cb9_z-500x375.jpg"},
   {id:"free_1kg_puttu_1", points:1000, name:"1 Chicken biryani 500ml box", value:9.99, emoji:"", image:"https://www.cubesnjuliennes.com/wp-content/uploads/2020/07/Chicken-Biryani-Recipe.jpg"},
@@ -562,6 +572,34 @@ function offerCard(p){
 function renderOfferSlider(){
   const box = document.getElementById("offerSlider");
   if(!box) return;
+  const banners = SPECIAL_BANNERS.filter(b => b.active && (b.desktopImage || b.mobileImage));
+  if(banners.length){
+    box.innerHTML = banners.map((b,i)=>{
+      const action = b.target === "offers" ? "scrollToOffers()" : "window.scrollTo({top:0,behavior:'smooth'})";
+      return `
+      <div class="offer-slide banner-slide ${i===0?'active':''}">
+        <button class="special-banner-link" type="button" onclick="${action}" aria-label="${escapeHtmlText(b.title || 'Special offer banner')}">
+          <picture>
+            ${b.mobileImage ? `<source media="(max-width: 700px)" srcset="${b.mobileImage}">` : ""}
+            <img class="special-banner-img" src="${b.desktopImage || b.mobileImage}" alt="${escapeHtmlText(b.title || 'Special offer banner')}" loading="eager" decoding="async">
+          </picture>
+        </button>
+      </div>
+    `;
+    }).join("");
+    let bannerIdx = 0;
+    clearInterval(window.offerSliderTimer);
+    if(banners.length > 1){
+      window.offerSliderTimer = setInterval(()=>{
+        const slides = document.querySelectorAll(".banner-slide");
+        if(!slides.length) return;
+        slides[bannerIdx].classList.remove("active");
+        bannerIdx = (bannerIdx + 1) % slides.length;
+        slides[bannerIdx].classList.add("active");
+      }, 4000);
+    }
+    return;
+  }
   const offers = PRODUCTS.filter(p => p.offer_price && p.stock === "In Stock");
   if(!offers.length){
     box.innerHTML = `<div class="slide active"><h2>Special Offer</h2><p>New offers coming soon.</p></div>`;
