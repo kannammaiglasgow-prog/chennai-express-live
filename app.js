@@ -167,7 +167,13 @@ function save(){
   localStorage.setItem("ce_requested_cart", JSON.stringify(requestedCart));
   updateCartCount(); 
 }
-function priceOf(p){ return p.offer_price || p.price; }
+function isSpecialOfferProduct(p){
+  return !!(p && (p.is_special_offer || p.badge === "Special Offer") && p.offer_price);
+}
+
+function normalPriceOf(p){ return Number(p && (p.normal_price || p.price) || 0); }
+
+function priceOf(p){ return isSpecialOfferProduct(p) ? p.offer_price : normalPriceOf(p); }
 function compactText(value){
   return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
@@ -292,7 +298,7 @@ function mergeLatestFileProductData(savedProducts){
       stock_status:keepSaved(saved, fileProduct, "stock_status", fileProduct.stock === "Out of Stock" ? "out_of_stock" : "in_stock"),
       badge:keepSaved(saved, fileProduct, "badge", ""),
       is_best_seller:!!keepSaved(saved, fileProduct, "is_best_seller", false),
-      is_special_offer:!!keepSaved(saved, fileProduct, "is_special_offer", false) || !!keepSaved(saved, fileProduct, "offer_price", null),
+      is_special_offer:!!keepSaved(saved, fileProduct, "is_special_offer", false) || keepSaved(saved, fileProduct, "badge", "") === "Special Offer",
       image:keepSaved(saved, fileProduct, "image", ""),
       description:cleanPublicDescription(keepSaved(saved, fileProduct, "description", "")),
       pack:keepSaved(saved, fileProduct, "pack", ""),
@@ -528,7 +534,7 @@ function scrollToRewards(){ openCart(); }
 
 function card(p){
   const title = productTitle(p);
-  const old = p.offer_price ? `<span class="old">${money(p.price)}</span>` : "";
+  const old = isSpecialOfferProduct(p) ? `<span class="old">${money(normalPriceOf(p))}</span>` : "";
   const disabled = p.stock !== "In Stock";
   const qty = cart[p.id] || 0;
   const description = cleanPublicDescription(p.description);
@@ -562,7 +568,7 @@ function offerCard(p){
     <div>
       <b>${title}</b>
       <p>${description}</p>
-      <div><span class="was">Was ${money(p.price)}</span> <span class="now">Now ${money(priceOf(p))}</span></div>
+      <div><span class="was">Was ${money(normalPriceOf(p))}</span> <span class="now">Now ${money(priceOf(p))}</span></div>
       <button onclick="addToCart(${p.id})">${tr("addOffer")}</button>
     </div>
   </div>`;
@@ -600,7 +606,7 @@ function renderOfferSlider(){
     }
     return;
   }
-  const offers = PRODUCTS.filter(p => p.offer_price && p.stock === "In Stock");
+  const offers = PRODUCTS.filter(p => isSpecialOfferProduct(p) && p.stock === "In Stock");
   if(!offers.length){
     box.innerHTML = `<div class="slide active"><h2>Special Offer</h2><p>New offers coming soon.</p></div>`;
     return;
@@ -611,7 +617,7 @@ function renderOfferSlider(){
       <div>
         <p class="tag">SPECIAL OFFER</p>
         <h2>${productTitle(p)}</h2>
-        <div class="offer-price"><span class="was">Was ${money(p.price)}</span> <span class="now">Now ${money(priceOf(p))}</span></div>
+        <div class="offer-price"><span class="was">Was ${money(normalPriceOf(p))}</span> <span class="now">Now ${money(priceOf(p))}</span></div>
         <button onclick="addToCart(${p.id})">${tr("addOffer")}</button>
       </div>
     </div>
@@ -629,7 +635,7 @@ function renderOfferSlider(){
 
 
 function renderSpecialOffers(){
-  const offers = PRODUCTS.filter(p => p.offer_price && p.stock === "In Stock");
+  const offers = PRODUCTS.filter(p => isSpecialOfferProduct(p) && p.stock === "In Stock");
   const box = document.getElementById("specialOffersGrid");
   if(!box) return;
   box.innerHTML = offers.length ? offers.map(offerCard).join("") : "<p>No special product offers today.</p>";
@@ -1349,7 +1355,7 @@ function openProductPage(id){
     document.body.appendChild(modal);
   }
   const qty = cart[p.id] || 0;
-  const old = p.offer_price ? `<span class="detail-old">${money(p.price)}</span>` : "";
+  const old = isSpecialOfferProduct(p) ? `<span class="detail-old">${money(normalPriceOf(p))}</span>` : "";
   const related = relatedProductsFor(p);
   const description = cleanPublicDescription(p.description);
   modal.innerHTML = `

@@ -114,6 +114,14 @@ function numberOrNull(value){
   return Number.isFinite(num) ? num : null;
 }
 
+function isSpecialOfferProduct(p){
+  return !!(p && (p.is_special_offer || p.badge === "Special Offer") && p.offer_price);
+}
+
+function effectiveProductPrice(p){
+  return isSpecialOfferProduct(p) ? Number(p.offer_price || 0) : Number(p.normal_price || p.price || 0);
+}
+
 function hasOwnValue(obj, key){
   return obj && Object.prototype.hasOwnProperty.call(obj, key);
 }
@@ -130,7 +138,7 @@ function dbProductToAdmin(p){
     category:p.category || "",
     subcategory:p.subcategory || "",
     description:cleanPublicDescription(p.description),
-    price:Number(p.offer_price || p.price || 0),
+    price:Number(p.price || 0),
     normal_price:Number(p.price || 0),
     offer_price:p.offer_price,
     pack_size:p.pack_size || "",
@@ -156,7 +164,7 @@ function localProductToAdmin(p){
     category:p.category || "",
     subcategory:p.subcategory || "",
     description:cleanPublicDescription(p.description),
-    price:Number(p.offer_price || p.price || 0),
+    price:Number(p.normal_price || p.price || 0),
     normal_price:Number(p.normal_price || p.price || 0),
     offer_price:p.offer_price || null,
     pack_size:p.pack || p.pack_size || "",
@@ -164,7 +172,7 @@ function localProductToAdmin(p){
     stock_qty:Number(p.stock_qty || p.units_per_case || 1),
     stock_status:p.stock_status || (p.stock === "Out of Stock" ? "out_of_stock" : "in_stock"),
     is_best_seller:!!p.is_best_seller || p.badge === "Best Seller",
-    is_special_offer:!!p.is_special_offer || !!p.offer_price || p.badge === "Special Offer",
+    is_special_offer:!!p.is_special_offer || p.badge === "Special Offer",
     invoice_amount:p.invoice_amount,
     invoice_qty:p.invoice_qty,
     units_per_case:p.units_per_case,
@@ -178,7 +186,7 @@ function localProductToAdmin(p){
 
 function adminProductToFrontend(p, index){
   const normalPrice = numberOrNull(p.normal_price) ?? numberOrNull(p.price) ?? 0;
-  const offerPrice = numberOrNull(p.offer_price);
+  const offerPrice = p.is_special_offer ? numberOrNull(p.offer_price) : null;
   return {
     id:p.frontend_id || p.id || index + 1,
     sku:p.sku || `CE-${String(index + 1).padStart(3,"0")}`,
@@ -193,7 +201,7 @@ function adminProductToFrontend(p, index){
     stock:p.stock_status === "out_of_stock" ? "Out of Stock" : "In Stock",
     stock_status:p.stock_status || "in_stock",
     stock_qty:Number.isFinite(Number(p.stock_qty)) ? Number(p.stock_qty) : 0,
-    badge:p.is_special_offer || offerPrice ? "Special Offer" : (p.is_best_seller ? "Best Seller" : ""),
+    badge:p.is_special_offer ? "Special Offer" : (p.is_best_seller ? "Best Seller" : ""),
     is_best_seller:!!p.is_best_seller,
     is_special_offer:!!p.is_special_offer,
     emoji:"ðŸ›’",
@@ -233,7 +241,7 @@ function mergeLatestFileProductData(savedProducts){
       stock_status:keepSaved(saved, fileProduct, "stock_status", fileProduct.stock === "Out of Stock" ? "out_of_stock" : "in_stock"),
       badge:keepSaved(saved, fileProduct, "badge", ""),
       is_best_seller:!!keepSaved(saved, fileProduct, "is_best_seller", false),
-      is_special_offer:!!keepSaved(saved, fileProduct, "is_special_offer", false) || !!keepSaved(saved, fileProduct, "offer_price", null),
+      is_special_offer:!!keepSaved(saved, fileProduct, "is_special_offer", false) || keepSaved(saved, fileProduct, "badge", "") === "Special Offer",
       image:keepSaved(saved, fileProduct, "image", ""),
       description:cleanPublicDescription(keepSaved(saved, fileProduct, "description", "")),
       pack:keepSaved(saved, fileProduct, "pack", ""),
@@ -350,7 +358,7 @@ function loadLocalProductsFallback(message){
 
 function adminProductToDb(p){
   const normalPrice = numberOrNull(p.normal_price) ?? numberOrNull(p.price) ?? 0;
-  const offerPrice = numberOrNull(p.offer_price);
+  const offerPrice = p.is_special_offer ? numberOrNull(p.offer_price) : null;
   return {
     sku:cleanText(p.sku),
     name:cleanText(p.name),
@@ -540,7 +548,7 @@ function renderProducts(){
       </div>
       <div>${escapeHtml(p.category)}<br><small>${escapeHtml(p.subcategory || "")}</small></div>
       <div>
-        ${p.offer_price ? `<span class="old-price">£${Number(p.normal_price || p.price).toFixed(2)}</span><br><b class="offer-price">£${Number(p.offer_price).toFixed(2)}</b>` : `<b>£${Number(p.price).toFixed(2)}</b>`}
+        ${isSpecialOfferProduct(p) ? `<span class="old-price">£${Number(p.normal_price || p.price).toFixed(2)}</span><br><b class="offer-price">£${Number(p.offer_price).toFixed(2)}</b>` : `<b>£${Number(p.normal_price || p.price).toFixed(2)}</b>`}
         ${p.is_special_offer ? `<br><span class="badge low_stock">Offer</span>` : ""}
       </div>
       <div>${statusBadge(p.stock_status)}<br><small>Qty: ${p.stock_qty}</small></div>
@@ -791,8 +799,9 @@ async function saveProductEdit(index){
   p.category = document.getElementById("editCategory").value.trim();
   p.subcategory = document.getElementById("editSubcategory").value.trim();
   p.normal_price = Number(document.getElementById("editNormalPrice").value || 0);
-  p.offer_price = document.getElementById("editOfferPrice").value ? Number(document.getElementById("editOfferPrice").value) : null;
-  p.price = p.offer_price || p.normal_price;
+  const offerPriceInput = document.getElementById("editOfferPrice").value ? Number(document.getElementById("editOfferPrice").value) : null;
+  p.offer_price = badge === "Special Offer" ? offerPriceInput : null;
+  p.price = p.normal_price;
   p.pack_size = document.getElementById("editPackSize").value.trim();
   p.stock_qty = Number(document.getElementById("editStockQty").value || 0);
   p.stock_status = document.getElementById("editStockStatus").value;
@@ -800,7 +809,7 @@ async function saveProductEdit(index){
   p.is_vegetarian = document.getElementById("editVeg").value;
   p.is_halal = document.getElementById("editHalal").value;
   p.is_best_seller = badge === "Best Seller";
-  p.is_special_offer = badge === "Special Offer" || !!p.offer_price;
+  p.is_special_offer = badge === "Special Offer";
   p.image = document.getElementById("editImageUrl").value.trim();
   p.description = cleanPublicDescription(document.getElementById("editDescription").value);
   p.ingredients = document.getElementById("editIngredients").value.trim();
@@ -923,7 +932,7 @@ async function openOrderDetail(index){
     </div>
   `).join("");
 
-  const productOptions = products.map((p, pIndex) => `<option value="${pIndex}">${escapeHtml(p.name)} - ${adminMoney(p.offer_price || p.price)}</option>`).join("");
+  const productOptions = products.map((p, pIndex) => `<option value="${pIndex}">${escapeHtml(p.name)} - ${adminMoney(effectiveProductPrice(p))}</option>`).join("");
   const dateLabel = order.order_type === "Delivery" ? "Delivery Date" : "Collection Date";
   const timeLabel = order.order_type === "Delivery" ? "Delivery Time" : "Collection Time";
 
@@ -1027,7 +1036,7 @@ function addProductToOrder(orderIndex){
   const qty = Math.max(1, Number(document.getElementById("orderAddQty").value || 1));
   const product = products[productIndex];
   if(!product) return;
-  const price = Number(product.offer_price || product.price || 0);
+  const price = effectiveProductPrice(product);
   order.items = order.items || [];
   order.items.push({
     product_db_id:product.db_id || null,
