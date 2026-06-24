@@ -222,15 +222,31 @@ function weightLabel(grams){
   return option ? option.label : "";
 }
 function linePrice(line){
-  if(line.grams) return Number((priceOf(line.p) * (line.grams / 1000)).toFixed(2));
+  if(line.grams) return weightPrice(line.p, line.grams);
   return priceOf(line.p);
+}
+function weightPrice(p, grams){
+  if(!isFreshVegProduct(p)) return priceOf(p);
+  const weight = Number(grams || 1000);
+  const raw = priceOf(p) * (weight / 1000);
+  if(weight >= 1000) return Number(raw.toFixed(2));
+  return Number((Math.ceil(raw * 2) / 2).toFixed(2));
 }
 function lineTitle(line){
   return line.grams ? `${productTitle(line.p)} - ${weightLabel(line.grams)}` : productTitle(line.p);
 }
+function updateFreshVegPrice(select){
+  const root = select && select.closest ? select.closest(".product-card,.product-detail,.related-card,.search-result-row") : null;
+  if(!root) return;
+  const id = select.dataset.productId;
+  const p = PRODUCTS.find(x=>x.id==id);
+  if(!p) return;
+  const priceEl = root.querySelector("[data-weight-price]");
+  if(priceEl) priceEl.textContent = money(weightPrice(p, Number(select.value)));
+}
 function freshVegWeightSelect(p){
   if(!isFreshVegProduct(p)) return "";
-  return `<select id="vegWeight_${p.id}" class="veg-weight-select" onclick="event.stopPropagation()" onchange="event.stopPropagation()">
+  return `<select id="vegWeight_${p.id}" class="veg-weight-select" data-product-id="${p.id}" onclick="event.stopPropagation()" onchange="event.stopPropagation(); updateFreshVegPrice(this)">
     ${FRESH_VEG_WEIGHT_OPTIONS.map(option => `<option value="${option.grams}" ${option.grams===1000?"selected":""}>${option.label}</option>`).join("")}
   </select>`;
 }
@@ -613,7 +629,7 @@ function card(p){
     <div class="sub">${description || p.subcategory}</div>
     <div class="pack">${p.subcategory} - ${p.pack}</div>
     <div class="pack">${stockLabel(p)}</div>
-    <div class="price-line"><span class="price">${money(priceOf(p))}</span>${old}</div>
+    <div class="price-line"><span class="price" data-weight-price>${money(priceOf(p))}</span>${old}</div>
     ${freshVegWeightSelect(p)}
     ${qtyControl}
   </div>`;
@@ -742,7 +758,7 @@ function searchResultRow(p){
   const qty = cartProductQty(p.id);
   return `<div class="search-result-row">
     <img class="clickable" src="${p.image}" alt="${title}" referrerpolicy="no-referrer" loading="lazy" decoding="async" onclick="openProductPage(${p.id})">
-    <div><b class="clickable" onclick="openProductPage(${p.id})">${title}</b><br><small>${p.subcategory} - ${p.pack}</small><br><span>${money(priceOf(p))}</span></div>
+    <div><b class="clickable" onclick="openProductPage(${p.id})">${title}</b><br><small>${p.subcategory} - ${p.pack}</small><br><span data-weight-price>${money(priceOf(p))}</span></div>
     ${freshVegWeightSelect(p)}
     ${qty>0 ? `<div class="mini-qty"><button onclick="changeSelectedQty(event,${p.id},-1)">-</button><b>${qty}</b><button onclick="addSelectedToCart(event,${p.id})">+</button></div>` : `<button onclick="addSelectedToCart(event,${p.id})">${tr("add")}</button>`}
   </div>`;
@@ -1533,7 +1549,7 @@ function openProductPage(id){
       ${p.badge ? `<div class="detail-badge">${p.badge}</div>` : ""}
       <h1>${title}</h1>
       <p class="detail-category">${p.category} - ${p.subcategory} - ${p.pack}</p>
-      <div class="detail-price">${old}<span>${money(priceOf(p))}</span></div>
+      <div class="detail-price">${old}<span data-weight-price>${money(priceOf(p))}</span></div>
       <p class="detail-stock">${stockLabel(p)}</p>
       <p class="detail-desc">${description}</p>
       ${freshVegWeightSelect(p)}
@@ -1567,7 +1583,7 @@ function relatedCard(r){
       ${qty>0?`<div class="related-added">${qty}</div>`:""}
       <img src="${r.image}" alt="${title}" referrerpolicy="no-referrer" loading="lazy" decoding="async" onclick="openProductPageFromRelated(${r.id})">
       <b onclick="openProductPageFromRelated(${r.id})">${title}</b>
-      <span>${money(priceOf(r))}</span>
+      <span data-weight-price>${money(priceOf(r))}</span>
       ${freshVegWeightSelect(r)}
       ${qty>0 
         ? `<div class="related-qty">
