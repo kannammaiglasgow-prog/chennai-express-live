@@ -1330,6 +1330,46 @@ function removeRequestedItem(index){
 }
 
 
+function recommendationSeed(value){
+  return String(value || "").split("").reduce((total, char) => {
+    return (total * 31 + char.charCodeAt(0)) % 1000003;
+  }, 7);
+}
+
+function seededProductMix(items, seed){
+  return items.slice().sort((a,b)=>{
+    const scoreA = recommendationSeed(`${seed}|${a.category}|${a.subcategory}|${a.id}|${a.name}`);
+    const scoreB = recommendationSeed(`${seed}|${b.category}|${b.subcategory}|${b.id}|${b.name}`);
+    return scoreA - scoreB;
+  });
+}
+
+function diverseRecommendationFill(available, used, currentProduct, count){
+  const byCategory = new Map();
+  available.filter(x=>!used.has(x.id)).forEach(item => {
+    const key = item.category || "Other";
+    if(!byCategory.has(key)) byCategory.set(key, []);
+    byCategory.get(key).push(item);
+  });
+
+  const seed = `${currentProduct.id}|${currentProduct.name}`;
+  const categories = Array.from(byCategory.keys()).sort((a,b)=>{
+    const aIsCurrent = a === currentProduct.category ? 1 : 0;
+    const bIsCurrent = b === currentProduct.category ? 1 : 0;
+    if(aIsCurrent !== bIsCurrent) return aIsCurrent - bIsCurrent;
+    return recommendationSeed(`${seed}|${a}`) - recommendationSeed(`${seed}|${b}`);
+  });
+
+  const groups = categories.map(category => seededProductMix(byCategory.get(category), seed));
+  const fill = [];
+  while(fill.length < count && groups.some(group => group.length)){
+    groups.forEach(group => {
+      if(fill.length < count && group.length) fill.push(group.shift());
+    });
+  }
+  return fill;
+}
+
 function relatedProductsFor(p){
   const TARGET_COUNT = 12;
   const MAX_RELATED = 9;
@@ -1347,18 +1387,7 @@ function relatedProductsFor(p){
   scored.sort((a,b)=>b._relScore-a._relScore);
   const related = scored.slice(0, MAX_RELATED);
   const used = new Set(related.map(x=>x.id).concat(p.id));
-  const fillers = available
-    .filter(x=>!used.has(x.id))
-    .map(x=>{
-      let score = 0;
-      if(x.stock === "In Stock") score += 5;
-      if(isSpecialOfferProduct(x)) score += 4;
-      if(x.category !== p.category) score += 3;
-      score += Math.min(Number(x.id || 0) / 1000, 1);
-      return {...x, _relScore: score};
-    })
-    .sort((a,b)=>b._relScore-a._relScore)
-    .slice(0, Math.max(0, TARGET_COUNT - related.length));
+  const fillers = diverseRecommendationFill(available, used, p, Math.max(0, TARGET_COUNT - related.length));
   return related.concat(fillers).slice(0, TARGET_COUNT);
 }
 
