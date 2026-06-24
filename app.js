@@ -1331,18 +1331,35 @@ function removeRequestedItem(index){
 
 
 function relatedProductsFor(p){
+  const TARGET_COUNT = 12;
+  const MAX_RELATED = 9;
   const words = normaliseText([p.name, p.subcategory, cleanPublicDescription(p.description)].join(" ")).split(" ").filter(w=>w.length>3);
-  // Do not show items already added to cart in Related Items
-  let scored = PRODUCTS.filter(x=>x.id!==p.id && (!cart[x.id] || x.id===window.recentRelatedAddedId)).map(x=>{
+  const available = PRODUCTS.filter(x=>x.id!==p.id && (!cart[x.id] || x.id===window.recentRelatedAddedId));
+  let scored = available.map(x=>{
     const t = productText(x);
     let score = 0;
     if(x.category === p.category) score += 4;
     if(x.subcategory === p.subcategory) score += 10;
     words.forEach(w=>{ if(t.includes(w)) score += 3; });
+    if(isSpecialOfferProduct(x)) score += 1;
     return {...x, _relScore: score};
   }).filter(x=>x._relScore>3);
   scored.sort((a,b)=>b._relScore-a._relScore);
-  return scored.slice(0,6);
+  const related = scored.slice(0, MAX_RELATED);
+  const used = new Set(related.map(x=>x.id).concat(p.id));
+  const fillers = available
+    .filter(x=>!used.has(x.id))
+    .map(x=>{
+      let score = 0;
+      if(x.stock === "In Stock") score += 5;
+      if(isSpecialOfferProduct(x)) score += 4;
+      if(x.category !== p.category) score += 3;
+      score += Math.min(Number(x.id || 0) / 1000, 1);
+      return {...x, _relScore: score};
+    })
+    .sort((a,b)=>b._relScore-a._relScore)
+    .slice(0, Math.max(0, TARGET_COUNT - related.length));
+  return related.concat(fillers).slice(0, TARGET_COUNT);
 }
 
 function openProductPage(id){
@@ -1381,9 +1398,9 @@ function openProductPage(id){
             : `<button class="detail-add" onclick="addToCart(${p.id}); refreshProductPageTop(${p.id})">${tr("addToCart")}</button>`
         }
       </div>
-      <h2>Related Items</h2>
+      <h2 id="recommendedItemsHeading">Recommended Items</h2>
       <div class="detail-related">
-        ${related.length ? related.map(relatedCard).join("") : "<p>No related items found.</p>"}
+        ${related.length ? related.map(relatedCard).join("") : "<p>No recommended items found.</p>"}
       </div>
     </div>
   `;
@@ -1433,7 +1450,7 @@ function refreshProductPageKeepRelated(id){
   if(id && modal && modal.classList.contains("show")){
     openProductPage(id);
     setTimeout(()=>{
-      const heading = [...document.querySelectorAll(".product-detail h2")].find(h=>h.innerText.includes("Related"));
+      const heading = document.getElementById("recommendedItemsHeading");
       if(heading) heading.scrollIntoView({behavior:"auto", block:"start"});
     },0);
   }
@@ -1446,7 +1463,7 @@ function refreshProductPage(id){
     openProductPage(id);
     if(!keepTop){
       setTimeout(()=>{
-        const heading = [...document.querySelectorAll(".product-detail h2")].find(h=>h.innerText.includes("Related"));
+        const heading = document.getElementById("recommendedItemsHeading");
         if(heading) heading.scrollIntoView({behavior:"instant", block:"start"});
       },0);
     }

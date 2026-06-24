@@ -2,6 +2,8 @@
 let products = [];
 let pendingImageUpload = null;
 const ADMIN_PRODUCTS_STORAGE_KEY = "ce_admin_products";
+const ADMIN_PRODUCTS_VERSION_KEY = "ce_admin_products_version";
+const ADMIN_PRODUCTS_FILE_VERSION = "20260624-json8-products";
 const ADMIN_REWARDS_STORAGE_KEY = "ce_rewards";
 const DEFAULT_SUPPLIER = "Shanker & Co";
 function showAdminError(message){
@@ -73,8 +75,7 @@ function statusBadge(status){
 function imageSrc(path){
   if(!path) return "";
   if(path.startsWith("http") || path.startsWith("data:")) return path;
-  if(path.startsWith("../")) return path;
-  return "../" + path;
+  return path.replace(/^(\.\.\/)+/, "");
 }
 
 document.addEventListener("error", function(event){
@@ -275,10 +276,17 @@ function mergeLatestFileProductData(savedProducts){
 function saveProductsToLocalStore(){
   const frontendProducts = products.map(adminProductToFrontend);
   localStorage.setItem(ADMIN_PRODUCTS_STORAGE_KEY, JSON.stringify(frontendProducts));
+  localStorage.setItem(ADMIN_PRODUCTS_VERSION_KEY, ADMIN_PRODUCTS_FILE_VERSION);
 }
 
 function loadSavedFrontendProducts(){
   try{
+    const savedVersion = localStorage.getItem(ADMIN_PRODUCTS_VERSION_KEY);
+    if(savedVersion !== ADMIN_PRODUCTS_FILE_VERSION){
+      localStorage.removeItem(ADMIN_PRODUCTS_STORAGE_KEY);
+      localStorage.setItem(ADMIN_PRODUCTS_VERSION_KEY, ADMIN_PRODUCTS_FILE_VERSION);
+      return null;
+    }
     const saved = JSON.parse(localStorage.getItem(ADMIN_PRODUCTS_STORAGE_KEY) || "null");
     if(!Array.isArray(saved) || !saved.length) return null;
     const merged = mergeLatestFileProductData(saved);
@@ -336,6 +344,7 @@ function importLocalProducts(event){
         return;
       }
       localStorage.setItem(ADMIN_PRODUCTS_STORAGE_KEY, JSON.stringify(imported));
+      localStorage.setItem(ADMIN_PRODUCTS_VERSION_KEY, ADMIN_PRODUCTS_FILE_VERSION);
       products = imported.map(localProductToAdmin);
       renderProducts();
       renderDashboard();
