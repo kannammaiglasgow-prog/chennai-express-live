@@ -18,9 +18,9 @@ const BANK_TRANSFER_DETAILS = {
 const SPECIAL_BANNERS = [
   {
     active: true,
-    title: "Bitter Gourd Special Offer",
-    desktopImage: "assets/banners/bitter-gourd-special-banner.png",
-    mobileImage: "assets/banners/bitter-gourd-special-banner.png",
+    title: "Shankar Gingelly Oil Special Offer",
+    desktopImage: "assets/banners/shankar-gingelly-oil-banner.png",
+    mobileImage: "assets/banners/shankar-gingelly-oil-banner.png",
     target: "offers"
   }
 ];
