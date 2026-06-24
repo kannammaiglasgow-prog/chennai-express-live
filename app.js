@@ -46,6 +46,11 @@ let checkedPostcode = "";
 let requestedCart = JSON.parse(localStorage.getItem("ce_requested_cart") || "[]");
 let claimedRewards = JSON.parse(localStorage.getItem("ce_claimed_rewards") || "[]");
 loadSavedRewards();
+const FRESH_VEG_WEIGHT_OPTIONS = [
+  {label:"250g", grams:250},
+  {label:"500g", grams:500},
+  {label:"1kg", grams:1000}
+];
 const TEXT = {
   restaurant:"Restaurant",
   grocery:"Grocery",
@@ -176,6 +181,59 @@ function isSpecialOfferProduct(p){
 function normalPriceOf(p){ return Number(p && (p.normal_price || p.price) || 0); }
 
 function priceOf(p){ return isSpecialOfferProduct(p) ? p.offer_price : normalPriceOf(p); }
+function isFreshVegProduct(p){
+  const text = normaliseText([p && p.category, p && p.subcategory, p && p.name].join(" "));
+  return text.includes("fresh veg") || text.includes("vegetable") || text.includes("brinjal") || text.includes("gourd") || text.includes("water melon") || text.includes("watermelon");
+}
+function selectedVegWeight(id){
+  const input = document.getElementById(`vegWeight_${id}`);
+  const grams = input ? Number(input.value) : 1000;
+  return FRESH_VEG_WEIGHT_OPTIONS.some(x => x.grams === grams) ? grams : 1000;
+}
+function selectedVegWeightFromButton(button, id){
+  const root = button && button.closest ? button.closest(".product-card,.product-detail,.related-card,.search-result-row") : null;
+  const input = root ? root.querySelector(".veg-weight-select") : null;
+  const grams = input ? Number(input.value) : selectedVegWeight(id);
+  return FRESH_VEG_WEIGHT_OPTIONS.some(x => x.grams === grams) ? grams : 1000;
+}
+function addSelectedToCart(event, id){
+  if(event) event.stopPropagation();
+  addToCart(id, selectedVegWeightFromButton(event && event.currentTarget, id));
+}
+function changeSelectedQty(event, id, delta){
+  if(event) event.stopPropagation();
+  changeQty(id, delta, selectedVegWeightFromButton(event && event.currentTarget, id));
+}
+function cartKey(id, grams){
+  const p = PRODUCTS.find(x => x.id == id);
+  return isFreshVegProduct(p) ? `${id}|${grams || 1000}` : String(id);
+}
+function parseCartKey(key){
+  const [id, grams] = String(key).split("|");
+  return {id, grams:grams ? Number(grams) : null};
+}
+function cartProductQty(id){
+  return Object.entries(cart).reduce((sum,[key,qty]) => {
+    return parseCartKey(key).id == id ? sum + Number(qty || 0) : sum;
+  }, 0);
+}
+function weightLabel(grams){
+  const option = FRESH_VEG_WEIGHT_OPTIONS.find(x => x.grams === Number(grams));
+  return option ? option.label : "";
+}
+function linePrice(line){
+  if(line.grams) return Number((priceOf(line.p) * (line.grams / 1000)).toFixed(2));
+  return priceOf(line.p);
+}
+function lineTitle(line){
+  return line.grams ? `${productTitle(line.p)} - ${weightLabel(line.grams)}` : productTitle(line.p);
+}
+function freshVegWeightSelect(p){
+  if(!isFreshVegProduct(p)) return "";
+  return `<select id="vegWeight_${p.id}" class="veg-weight-select" onclick="event.stopPropagation()" onchange="event.stopPropagation()">
+    ${FRESH_VEG_WEIGHT_OPTIONS.map(option => `<option value="${option.grams}" ${option.grams===1000?"selected":""}>${option.label}</option>`).join("")}
+  </select>`;
+}
 function compactText(value){
   return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
@@ -329,14 +387,15 @@ function mergeLatestFileProductData(savedProducts){
 function validateCartStock(showAlert = true){
   refreshProductsFromAdminStore();
   const problems = [];
-  cartLines().forEach(({p, qty}) => {
+  cartLines().forEach(({p, qty, grams, key}) => {
     const limit = stockLimit(p);
+    const stockUnits = grams ? Math.floor(limit / (grams / 1000)) : limit;
     if(p.stock !== "In Stock" || limit <= 0){
       problems.push(`${p.name} is out of stock.`);
-    }else if(Number.isFinite(limit) && qty > limit){
-      problems.push(`${p.name}: only ${limit} available, but cart has ${qty}.`);
-      cart[p.id] = limit;
-      if(limit <= 0) delete cart[p.id];
+    }else if(Number.isFinite(stockUnits) && qty > stockUnits){
+      problems.push(`${lineTitle({p, grams})}: only ${stockUnits} available, but cart has ${qty}.`);
+      cart[key] = stockUnits;
+      if(stockUnits <= 0) delete cart[key];
     }
   });
   if(problems.length){
@@ -358,12 +417,13 @@ function saveCurrentProductsToAdminStore(){
 }
 
 function reduceStockAfterOrder(lines){
-  lines.forEach(({p, qty}) => {
+  lines.forEach(({p, qty, grams}) => {
     const product = PRODUCTS.find(x => x.id === p.id);
     if(!product) return;
     const limit = stockLimit(product);
     if(!Number.isFinite(limit)) return;
-    product.stock_qty = Math.max(0, limit - qty);
+    const stockQtyUsed = grams ? Number(qty || 0) * (grams / 1000) : Number(qty || 0);
+    product.stock_qty = Math.max(0, Number((limit - stockQtyUsed).toFixed(3)));
     if(product.stock_qty <= 0) product.stock = "Out of Stock";
   });
   saveCurrentProductsToAdminStore();
@@ -538,13 +598,13 @@ function card(p){
   const title = productTitle(p);
   const old = isSpecialOfferProduct(p) ? `<span class="old">${money(normalPriceOf(p))}</span>` : "";
   const disabled = p.stock !== "In Stock";
-  const qty = cart[p.id] || 0;
+  const qty = cartProductQty(p.id);
   const description = cleanPublicDescription(p.description);
   const qtyControl = disabled 
     ? `<button class="add" disabled>${tr("out")}</button>`
     : qty > 0 
-      ? `<div class="inline-qty"><button onclick="event.stopPropagation(); changeQty(${p.id},-1)">-</button><b>${qty}</b><button onclick="event.stopPropagation(); addToCart(${p.id})">+</button></div>`
-      : `<button class="add" onclick="event.stopPropagation(); addToCart(${p.id})">${tr("add")}</button>`;
+      ? `<div class="inline-qty"><button onclick="changeSelectedQty(event,${p.id},-1)">-</button><b>${qty}</b><button onclick="addSelectedToCart(event,${p.id})">+</button></div>`
+      : `<button class="add" onclick="addSelectedToCart(event,${p.id})">${tr("add")}</button>`;
   return `<div class="product-card ${disabled?'out':''} ${qty>0?'selected':''}">
     ${p.badge?`<div class="badge">${p.badge}</div>`:""}
     ${qty>0?`<div class="added-pill">${qty}</div>`:""}
@@ -554,12 +614,13 @@ function card(p){
     <div class="pack">${p.subcategory} - ${p.pack}</div>
     <div class="pack">${stockLabel(p)}</div>
     <div class="price-line"><span class="price">${money(priceOf(p))}</span>${old}</div>
+    ${freshVegWeightSelect(p)}
     ${qtyControl}
   </div>`;
 }
 
 function renderMostOrdered(){
-  document.getElementById("mostOrdered").innerHTML = PRODUCTS.slice(0,6).map(card).join("");
+  document.getElementById("mostOrdered").innerHTML = diverseProductList(PRODUCTS, "home-most-ordered").slice(0,12).map(card).join("");
 }
 
 function offerCard(p){
@@ -678,11 +739,12 @@ function renderTopSearchResults(){
 
 function searchResultRow(p){
   const title = productTitle(p);
-  const qty = cart[p.id] || 0;
+  const qty = cartProductQty(p.id);
   return `<div class="search-result-row">
     <img class="clickable" src="${p.image}" alt="${title}" referrerpolicy="no-referrer" loading="lazy" decoding="async" onclick="openProductPage(${p.id})">
     <div><b class="clickable" onclick="openProductPage(${p.id})">${title}</b><br><small>${p.subcategory} - ${p.pack}</small><br><span>${money(priceOf(p))}</span></div>
-    ${qty>0 ? `<div class="mini-qty"><button onclick="changeQty(${p.id},-1)">-</button><b>${qty}</b><button onclick="addToCart(${p.id})">+</button></div>` : `<button onclick="addToCart(${p.id})">${tr("add")}</button>`}
+    ${freshVegWeightSelect(p)}
+    ${qty>0 ? `<div class="mini-qty"><button onclick="changeSelectedQty(event,${p.id},-1)">-</button><b>${qty}</b><button onclick="addSelectedToCart(event,${p.id})">+</button></div>` : `<button onclick="addSelectedToCart(event,${p.id})">${tr("add")}</button>`}
   </div>`;
 }
 
@@ -696,7 +758,7 @@ function renderProducts(){
     return;
   }
 
-  const items = smartSearchProducts(rawQ, c);
+  const items = c === "All" ? diverseProductList(smartSearchProducts(rawQ, c), "all-products") : smartSearchProducts(rawQ, c);
   document.getElementById("productGrid").innerHTML = items.map(card).join("") || `<p>${tr("cantFind")}</p>`;
 }
 
@@ -736,17 +798,20 @@ function fillRequestFromSearch(){
   },400);
 }
 
-function addToCart(id){
+function addToCart(id, gramsOverride){
   refreshProductsFromAdminStore();
   const p = PRODUCTS.find(x=>x.id===id);
   if(!p || p.stock !== "In Stock") return;
   const limit = stockLimit(p);
-  const currentQty = cart[id] || 0;
-  if(Number.isFinite(limit) && currentQty >= limit){
+  const grams = isFreshVegProduct(p) ? (gramsOverride || selectedVegWeight(id)) : null;
+  const key = cartKey(id, grams);
+  const currentQty = cart[key] || 0;
+  const stockUnits = grams ? Math.floor(limit / (grams / 1000)) : limit;
+  if(Number.isFinite(stockUnits) && currentQty >= stockUnits){
     alert(`${p.name}: only ${limit} available in stock.`);
     return;
   }
-  cart[id] = currentQty + 1;
+  cart[key] = currentQty + 1;
   save();
   renderCart();
   renderMostOrdered();
@@ -754,21 +819,30 @@ function addToCart(id){
   renderOfferSlider();
   renderProducts();
   renderTopSearchResults();
-  showToast(`${p.name} added to cart`);
+  showToast(`${p.name}${grams ? " - " + weightLabel(grams) : ""} added to cart`);
 }
-function changeQty(id, delta){
+function changeQty(id, delta, gramsOverride){
   refreshProductsFromAdminStore();
   const p = PRODUCTS.find(x=>x.id===id);
   if(!p) return;
   const limit = stockLimit(p);
-  const nextQty = (cart[id] || 0) + delta;
-  if(delta > 0 && Number.isFinite(limit) && nextQty > limit){
+  const grams = isFreshVegProduct(p) ? (gramsOverride || selectedVegWeight(id)) : null;
+  let key = cartKey(id, grams);
+  if(delta < 0 && !cart[key]){
+    const existingKey = Object.keys(cart).find(k => parseCartKey(k).id == id);
+    if(existingKey) key = existingKey;
+  }
+  const current = cart[key] || 0;
+  const lineGrams = parseCartKey(key).grams;
+  const stockUnits = lineGrams ? Math.floor(limit / (lineGrams / 1000)) : limit;
+  const nextQty = current + delta;
+  if(delta > 0 && Number.isFinite(stockUnits) && nextQty > stockUnits){
     alert(`${p.name}: only ${limit} available in stock.`);
     return;
   }
-  cart[id] = nextQty;
-  if(cart[id] <= 0) {
-    delete cart[id];
+  cart[key] = nextQty;
+  if(cart[key] <= 0) {
+    delete cart[key];
     if(window.recentRelatedAddedId === id) window.recentRelatedAddedId = null;
   }
   save();
@@ -778,7 +852,29 @@ function changeQty(id, delta){
   renderOfferSlider();
   renderProducts();
   renderTopSearchResults();
-  if(p) showToast(cart[id] ? `${p.name}: ${cart[id]} in cart` : `${p.name} removed`);
+  if(p) showToast(cartProductQty(id) ? `${p.name}: ${cartProductQty(id)} in cart` : `${p.name} removed`);
+}
+function changeCartLineQty(key, delta){
+  refreshProductsFromAdminStore();
+  const parsed = parseCartKey(key);
+  const p = PRODUCTS.find(x=>x.id==parsed.id);
+  if(!p) return;
+  const limit = stockLimit(p);
+  const stockUnits = parsed.grams ? Math.floor(limit / (parsed.grams / 1000)) : limit;
+  const nextQty = (cart[key] || 0) + delta;
+  if(delta > 0 && Number.isFinite(stockUnits) && nextQty > stockUnits){
+    alert(`${p.name}: only ${limit} available in stock.`);
+    return;
+  }
+  cart[key] = nextQty;
+  if(cart[key] <= 0) delete cart[key];
+  save();
+  renderCart();
+  renderMostOrdered();
+  renderSpecialOffers();
+  renderOfferSlider();
+  renderProducts();
+  renderTopSearchResults();
 }
 function updateCartCount(){
   const count = Object.values(cart).reduce((a,b)=>a+b,0) + requestedCart.length + claimedRewards.length;
@@ -787,10 +883,13 @@ function updateCartCount(){
 function openCart(){ document.getElementById("cartDrawer").classList.add("open"); renderCart(); }
 function closeCart(){ document.getElementById("cartDrawer").classList.remove("open"); }
 function cartLines(){
-  return Object.entries(cart).map(([id,qty])=>({p:PRODUCTS.find(x=>x.id==id), qty})).filter(x=>x.p);
+  return Object.entries(cart).map(([key,qty])=>{
+    const parsed = parseCartKey(key);
+    return {key, p:PRODUCTS.find(x=>x.id==parsed.id), qty, grams:parsed.grams};
+  }).filter(x=>x.p);
 }
 function subtotal(){
-  return cartLines().reduce((s,x)=>s + priceOf(x.p)*x.qty,0);
+  return cartLines().reduce((s,x)=>s + linePrice(x)*x.qty,0);
 }
 function renderCartRewards(){
   const box = document.getElementById("cartRewardsBox");
@@ -966,9 +1065,9 @@ function renderCartRewards(){
 function renderCart(){
   const lines = cartLines();
   const productHtml = lines.map(x=>`<div class="cart-item">
-    <img class="mini-img" src="${x.p.image}" alt="${productTitle(x.p)}" referrerpolicy="no-referrer" loading="lazy" decoding="async">
-    <div><b>${productTitle(x.p)}</b><br><small>${money(priceOf(x.p))}</small><br><span class="qty"><button onclick="changeQty(${x.p.id},-1)">-</button> ${x.qty} <button onclick="changeQty(${x.p.id},1)">+</button></span></div>
-    <b>${money(priceOf(x.p)*x.qty)}</b>
+    <img class="mini-img" src="${x.p.image}" alt="${lineTitle(x)}" referrerpolicy="no-referrer" loading="lazy" decoding="async">
+    <div><b>${lineTitle(x)}</b><br><small>${money(linePrice(x))}</small><br><span class="qty"><button onclick="changeCartLineQty('${x.key}',-1)">-</button> ${x.qty} <button onclick="changeCartLineQty('${x.key}',1)">+</button></span></div>
+    <b>${money(linePrice(x)*x.qty)}</b>
   </div>`).join("");
 
   const requestedHtml = requestedCart.map((r,i)=>`<div class="cart-item requested-item">
@@ -1153,7 +1252,7 @@ async function sendWhatsAppOrder(){
     if(!validateCartStock(true)) return;
     const lines = cartLines();
     if(!lines.length && !requestedCart.length && !claimedRewards.length){
-      alert("Cart is empty");
+      showCheckoutMessage("Cart is empty.");
       return;
     }
 
@@ -1170,17 +1269,17 @@ async function sendWhatsAppOrder(){
     const paymentMethod = paymentEl ? paymentEl.value : "Cash";
 
     if(!name || !phone){
-      alert("Please enter customer name and WhatsApp number.");
+      showCheckoutMessage("Please enter customer name and WhatsApp number.");
       return;
     }
 
     if(type === "Delivery"){
       if(!postcode){
-        alert("Please enter delivery postcode.");
+        showCheckoutMessage("Please enter delivery postcode.");
         return;
       }
       if(!address){
-        alert("Please enter full delivery address.");
+        showCheckoutMessage("Please enter full delivery address.");
         return;
       }
     }
@@ -1200,10 +1299,10 @@ async function sendWhatsAppOrder(){
       address: address,
       notes: notes,
       items: lines.map(x => ({
-        name: productTitle(x.p),
+        name: lineTitle(x),
         qty: x.qty,
-        price: priceOf(x.p),
-        total: priceOf(x.p) * x.qty
+        price: linePrice(x),
+        total: linePrice(x) * x.qty
       })),
       requestedItems: requestedCart.map(x => x.name),
       rewards: claimedRewards.map(x => ({
@@ -1250,8 +1349,8 @@ async function sendWhatsAppOrder(){
       msg += `\nORDER ITEMS\n`;
       msg += `--------------------\n`;
       lines.forEach((x,i)=> {
-        msg += `${i+1}. ${x.qty} x ${productTitle(x.p)}\n`;
-        msg += `   ${money(priceOf(x.p))} each = ${money(priceOf(x.p)*x.qty)}\n`;
+        msg += `${i+1}. ${x.qty} x ${lineTitle(x)}\n`;
+        msg += `   ${money(linePrice(x))} each = ${money(linePrice(x)*x.qty)}\n`;
       });
     }
 
@@ -1344,6 +1443,24 @@ function seededProductMix(items, seed){
   });
 }
 
+function diverseProductList(items, seed){
+  const byCategory = new Map();
+  items.forEach(item => {
+    const key = item.category || "Other";
+    if(!byCategory.has(key)) byCategory.set(key, []);
+    byCategory.get(key).push(item);
+  });
+  const categories = Array.from(byCategory.keys()).sort((a,b)=>recommendationSeed(`${seed}|${a}`) - recommendationSeed(`${seed}|${b}`));
+  const groups = categories.map(category => seededProductMix(byCategory.get(category), seed));
+  const mixed = [];
+  while(groups.some(group => group.length)){
+    groups.forEach(group => {
+      if(group.length) mixed.push(group.shift());
+    });
+  }
+  return mixed;
+}
+
 function diverseRecommendationFill(available, used, currentProduct, count){
   const byCategory = new Map();
   available.filter(x=>!used.has(x.id)).forEach(item => {
@@ -1402,7 +1519,7 @@ function openProductPage(id){
     modal.className = "product-modal";
     document.body.appendChild(modal);
   }
-  const qty = cart[p.id] || 0;
+  const qty = cartProductQty(p.id);
   const old = isSpecialOfferProduct(p) ? `<span class="detail-old">${money(normalPriceOf(p))}</span>` : "";
   const related = relatedProductsFor(p);
   const description = cleanPublicDescription(p.description);
@@ -1419,12 +1536,13 @@ function openProductPage(id){
       <div class="detail-price">${old}<span>${money(priceOf(p))}</span></div>
       <p class="detail-stock">${stockLabel(p)}</p>
       <p class="detail-desc">${description}</p>
+      ${freshVegWeightSelect(p)}
       <div class="detail-actions">
         ${p.stock !== "In Stock" 
           ? `<button class="disabled-detail" disabled>${tr("outOfStock")}</button>`
           : qty > 0
-            ? `<div class="detail-qty"><button onclick="changeQty(${p.id},-1); refreshProductPageTop(${p.id})">-</button><b>${qty}</b><button onclick="addToCart(${p.id}); refreshProductPageTop(${p.id})">+</button></div>`
-            : `<button class="detail-add" onclick="addToCart(${p.id}); refreshProductPageTop(${p.id})">${tr("addToCart")}</button>`
+            ? `<div class="detail-qty"><button onclick="changeSelectedQty(event,${p.id},-1); refreshProductPageTop(${p.id})">-</button><b>${qty}</b><button onclick="addSelectedToCart(event,${p.id}); refreshProductPageTop(${p.id})">+</button></div>`
+            : `<button class="detail-add" onclick="addSelectedToCart(event,${p.id}); refreshProductPageTop(${p.id})">${tr("addToCart")}</button>`
         }
       </div>
       <h2 id="recommendedItemsHeading">Recommended Items</h2>
@@ -1442,7 +1560,7 @@ function openProductPage(id){
 }
 
 function relatedCard(r){
-  const qty = cart[r.id] || 0;
+  const qty = cartProductQty(r.id);
   const title = productTitle(r);
   return `
     <div class="related-card ${qty>0?'selected-related':''}">
@@ -1450,13 +1568,14 @@ function relatedCard(r){
       <img src="${r.image}" alt="${title}" referrerpolicy="no-referrer" loading="lazy" decoding="async" onclick="openProductPageFromRelated(${r.id})">
       <b onclick="openProductPageFromRelated(${r.id})">${title}</b>
       <span>${money(priceOf(r))}</span>
+      ${freshVegWeightSelect(r)}
       ${qty>0 
         ? `<div class="related-qty">
-            <button onclick="event.stopPropagation(); window.recentRelatedAddedId=${r.id}; changeQty(${r.id},-1); refreshProductPageKeepRelated(window.currentProductDetailId)">-</button>
+            <button onclick="event.stopPropagation(); window.recentRelatedAddedId=${r.id}; changeSelectedQty(event,${r.id},-1); refreshProductPageKeepRelated(window.currentProductDetailId)">-</button>
             <b>${qty}</b>
-            <button onclick="event.stopPropagation(); window.recentRelatedAddedId=${r.id}; addToCart(${r.id}); refreshProductPageKeepRelated(window.currentProductDetailId)">+</button>
+            <button onclick="event.stopPropagation(); window.recentRelatedAddedId=${r.id}; addSelectedToCart(event,${r.id}); refreshProductPageKeepRelated(window.currentProductDetailId)">+</button>
           </div>`
-        : `<button onclick="event.stopPropagation(); window.recentRelatedAddedId=${r.id}; addToCart(${r.id}); refreshProductPageKeepRelated(window.currentProductDetailId)">${tr("add")}</button>`
+        : `<button onclick="event.stopPropagation(); window.recentRelatedAddedId=${r.id}; addSelectedToCart(event,${r.id}); refreshProductPageKeepRelated(window.currentProductDetailId)">${tr("add")}</button>`
       }
     </div>
   `;
@@ -1553,6 +1672,26 @@ function showToast(text){
   t.className = "toast show";
   clearTimeout(window.toastTimer);
   window.toastTimer = setTimeout(()=>{ t.className = "toast"; }, 1800);
+}
+
+function showCheckoutMessage(message){
+  let box = document.getElementById("checkoutMessage");
+  if(!box){
+    box = document.createElement("div");
+    box.id = "checkoutMessage";
+    box.className = "checkout-message";
+    document.body.appendChild(box);
+  }
+  box.innerHTML = `<div class="checkout-message-box">
+    <p>${escapeHtmlText(message)}</p>
+    <button onclick="closeCheckoutMessage()">OK</button>
+  </div>`;
+  box.classList.add("show");
+}
+
+function closeCheckoutMessage(){
+  const box = document.getElementById("checkoutMessage");
+  if(box) box.classList.remove("show");
 }
 
 init();

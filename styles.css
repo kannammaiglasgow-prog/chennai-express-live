@@ -1319,8 +1319,12 @@ body{
   border-color:var(--red);
 }
 .search-wrap{
-  position:relative;
+  position:sticky;
+  top:72px;
+  z-index:9;
   padding:16px 14px 12px;
+  background:#fffaf0;
+  border-bottom:1px solid #f0dfc6;
 }
 .search-wrap input{
   min-height:52px;
@@ -1333,6 +1337,51 @@ body{
   border-radius:16px;
   background:linear-gradient(135deg,var(--green),#0c9a49);
   box-shadow:0 8px 18px rgba(8,122,54,.22);
+}
+.veg-weight-select{
+  width:100%;
+  margin:8px 0;
+  padding:9px 10px;
+  border:1px solid #dfeee5;
+  border-radius:10px;
+  background:#f3fbf6;
+  color:var(--green);
+  font-weight:800;
+}
+.checkout-message{
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,.32);
+  z-index:90;
+  padding:22px;
+}
+.checkout-message.show{
+  display:flex;
+}
+.checkout-message-box{
+  width:min(360px,100%);
+  background:white;
+  border-radius:16px;
+  padding:22px;
+  box-shadow:0 16px 45px rgba(0,0,0,.24);
+  text-align:center;
+}
+.checkout-message-box p{
+  margin:0 0 18px;
+  font-size:17px;
+  font-weight:800;
+}
+.checkout-message-box button{
+  min-width:110px;
+  border:0;
+  border-radius:12px;
+  background:var(--green);
+  color:white;
+  padding:12px 18px;
+  font-weight:900;
 }
 .offer-hero{
   margin:2px 14px 18px;
