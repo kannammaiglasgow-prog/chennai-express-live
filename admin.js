@@ -83,6 +83,21 @@ function statusBadge(status){
   return `<span class="badge ${status}">${String(status || "").replace("_"," ")}</span>`;
 }
 
+function normalizeProductStockState(p){
+  const qty = Number(p.stock_qty || 0);
+  if(p.stock_status === "out_of_stock"){
+    if(qty > 0){
+      p.stock_status = qty <= 3 ? "low_stock" : "in_stock";
+    }else{
+      p.stock_qty = 0;
+    }
+    return;
+  }
+  if(qty <= 0){
+    p.stock_qty = 1;
+  }
+}
+
 function imageSrc(path){
   if(!path) return "";
   if(path.startsWith("http") || path.startsWith("data:")) return path;
@@ -610,6 +625,7 @@ async function setStock(i,status){
   products[i].stock_status = status;
   if(status === "out_of_stock") products[i].stock_qty = 0;
   if(status === "in_stock" && Number(products[i].stock_qty || 0) <= 0) products[i].stock_qty = 1;
+  if(status === "low_stock" && Number(products[i].stock_qty || 0) <= 0) products[i].stock_qty = 1;
   const saved = await saveProductToSupabase(i);
   if(!saved){
     products[i].stock_status = previousStatus;
@@ -847,6 +863,7 @@ async function saveProductEdit(index){
   p.pack_size = document.getElementById("editPackSize").value.trim();
   p.stock_qty = Number(document.getElementById("editStockQty").value || 0);
   p.stock_status = document.getElementById("editStockStatus").value;
+  normalizeProductStockState(p);
   p.supplier = document.getElementById("editSupplier").value.trim() || DEFAULT_SUPPLIER;
   p.is_vegetarian = document.getElementById("editVeg").value;
   p.is_halal = document.getElementById("editHalal").value;
