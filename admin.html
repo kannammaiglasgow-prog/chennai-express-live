@@ -28,7 +28,7 @@
     <div class="cards">
       <div class="card"><b>Today Orders</b><span id="todayOrders">0</span></div>
       <div class="card"><b>Pending Orders</b><span id="pendingOrders">0</span></div>
-      <div class="card"><b>Out of Stock</b><span id="outStock">0</span></div>
+      <button class="card dashboard-card" type="button" onclick="openOutOfStockProducts()"><b>Out of Stock</b><span id="outStock">0</span></button>
       <div class="card"><b>Reward Claims</b><span id="rewardClaims">0</span></div>
     </div>
   </section>
@@ -97,6 +97,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase_config.js?v=20260622-admin-all-details-save"></script>
 <script src="products.js?v=20260624-json8-products"></script>
-<script src="admin.js?v=20260625-stock-hide-admin-out"></script>
+<script src="admin.js?v=20260625-out-stock-card-link"></script>
 </body>
 </html>

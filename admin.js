@@ -68,6 +68,17 @@ function showTab(id){
   document.getElementById(id).classList.add("active");
 }
 
+function openOutOfStockProducts(){
+  showTab("products");
+  const searchInput = document.getElementById("productSearch");
+  if(searchInput) searchInput.value = "";
+  renderProducts();
+  setTimeout(() => {
+    const section = document.getElementById("outOfStockProductsSection");
+    if(section) section.scrollIntoView({behavior:"smooth", block:"start"});
+  }, 50);
+}
+
 function statusBadge(status){
   return `<span class="badge ${status}">${String(status || "").replace("_"," ")}</span>`;
 }
@@ -552,8 +563,8 @@ function renderProducts(){
     .filter(({p}) => !query || productSearchText(p).includes(query));
   const availableProducts = matchedProducts.filter(({p}) => p.stock_status !== "out_of_stock" && Number(p.stock_qty || 0) > 0);
   const outProducts = matchedProducts.filter(({p}) => p.stock_status === "out_of_stock" || Number(p.stock_qty || 0) <= 0);
-  const productTable = (items, title, emptyText) => `
-  <h3>${title} (${items.length})</h3>
+  const productTable = (items, title, emptyText, sectionId = "") => `
+  <h3 ${sectionId ? `id="${sectionId}"` : ""}>${title} (${items.length})</h3>
   ${items.length ? `<div class="table product-table">
     <div class="row head product-row"><div>Product</div><div>Category</div><div>Price</div><div>Stock</div><div>Actions</div></div>
     ${items.map(({p,index})=>`<div class="row product-row product-click" onclick="openProductEditor(${index})">
@@ -583,7 +594,7 @@ function renderProducts(){
   </div>` : `<div class="card"><b>${emptyText}</b></div>`}`;
   const html = `
     ${productTable(availableProducts, "Active Products", "No active products found")}
-    ${productTable(outProducts, "Out of Stock Products", "No out-of-stock products")}
+    ${productTable(outProducts, "Out of Stock Products", "No out-of-stock products", "outOfStockProductsSection")}
     <div id="productEditor"></div>`;
   const countLine = query
     ? `<p><b>Showing:</b> ${matchedProducts.length} of ${products.length} products</p>`
