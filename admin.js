@@ -193,6 +193,8 @@ function adminProductToFrontend(p, index){
   const normalPrice = numberOrNull(p.normal_price) ?? numberOrNull(p.price) ?? 0;
   const badge = hasOwnValue(p, "badge") ? (p.badge || "") : (p.is_special_offer ? "Special Offer" : (p.is_best_seller ? "Best Seller" : ""));
   const offerPrice = badge === "Special Offer" ? numberOrNull(p.offer_price) : null;
+  const stockQty = Number.isFinite(Number(p.stock_qty)) ? Number(p.stock_qty) : 0;
+  const outOfStock = p.stock_status === "out_of_stock" || stockQty <= 0;
   return {
     id:p.frontend_id || p.id || index + 1,
     sku:p.sku || `CE-${String(index + 1).padStart(3,"0")}`,
@@ -204,9 +206,9 @@ function adminProductToFrontend(p, index){
     offer_price:offerPrice,
     pack:p.pack_size || p.pack || "",
     pack_size:p.pack_size || p.pack || "",
-    stock:p.stock_status === "out_of_stock" ? "Out of Stock" : "In Stock",
-    stock_status:p.stock_status || "in_stock",
-    stock_qty:Number.isFinite(Number(p.stock_qty)) ? Number(p.stock_qty) : 0,
+    stock:outOfStock ? "Out of Stock" : "In Stock",
+    stock_status:outOfStock ? "out_of_stock" : (p.stock_status || "in_stock"),
+    stock_qty:stockQty,
     badge,
     is_best_seller:badge === "Best Seller",
     is_special_offer:badge === "Special Offer",
@@ -467,7 +469,7 @@ async function uploadProductImage(file){
 function renderDashboard(){
   document.getElementById("todayOrders").innerText = orders.length;
   document.getElementById("pendingOrders").innerText = orders.filter(o=>o.status==="pending").length;
-  document.getElementById("outStock").innerText = products.filter(p=>p.stock_status==="out_of_stock").length;
+  document.getElementById("outStock").innerText = products.filter(p=>p.stock_status==="out_of_stock" || Number(p.stock_qty || 0) <= 0).length;
   document.getElementById("rewardClaims").innerText = "Demo";
 }
 
@@ -545,12 +547,16 @@ function clearProductSearch(){
 function renderProducts(){
   const searchInput = document.getElementById("productSearch");
   const query = normaliseSearchText(searchInput ? searchInput.value : "");
-  const visibleProducts = products
+  const matchedProducts = products
     .map((p, index) => ({p, index}))
     .filter(({p}) => !query || productSearchText(p).includes(query));
-  const html = `<div class="table product-table">
+  const availableProducts = matchedProducts.filter(({p}) => p.stock_status !== "out_of_stock" && Number(p.stock_qty || 0) > 0);
+  const outProducts = matchedProducts.filter(({p}) => p.stock_status === "out_of_stock" || Number(p.stock_qty || 0) <= 0);
+  const productTable = (items, title, emptyText) => `
+  <h3>${title} (${items.length})</h3>
+  ${items.length ? `<div class="table product-table">
     <div class="row head product-row"><div>Product</div><div>Category</div><div>Price</div><div>Stock</div><div>Actions</div></div>
-    ${visibleProducts.map(({p,index})=>`<div class="row product-row product-click" onclick="openProductEditor(${index})">
+    ${items.map(({p,index})=>`<div class="row product-row product-click" onclick="openProductEditor(${index})">
       <div class="admin-product-main">
         ${p.image ? `<img src="${imageSrc(p.image)}" alt="${escapeHtml(p.name)}" referrerpolicy="no-referrer" loading="lazy" decoding="async">` : `<div class="no-img">No Image</div>`}
         <div>
@@ -574,22 +580,32 @@ function renderProducts(){
         <button class="red" onclick="deleteProductFromSupabase(${index})">Delete</button>
       </div>
     </div>`).join("")}
-  </div>
-  <div id="productEditor"></div>`;
+  </div>` : `<div class="card"><b>${emptyText}</b></div>`}`;
+  const html = `
+    ${productTable(availableProducts, "Active Products", "No active products found")}
+    ${productTable(outProducts, "Out of Stock Products", "No out-of-stock products")}
+    <div id="productEditor"></div>`;
   const countLine = query
-    ? `<p><b>Showing:</b> ${visibleProducts.length} of ${products.length} products</p>`
+    ? `<p><b>Showing:</b> ${matchedProducts.length} of ${products.length} products</p>`
     : `<p><b>Total Products:</b> ${products.length}</p>`;
-  const emptyLine = visibleProducts.length ? "" : `<div class="card"><b>No products found</b><p>Try another search word.</p></div>`;
+  const emptyLine = matchedProducts.length ? "" : `<div class="card"><b>No products found</b><p>Try another search word.</p></div>`;
   document.getElementById("productList").innerHTML = countLine + emptyLine + html;
 }
 
 async function setStock(i,status){
   if(!products[i]) return;
   const previousStatus = products[i].stock_status;
+  const previousQty = products[i].stock_qty;
   products[i].stock_status = status;
+  if(status === "out_of_stock") products[i].stock_qty = 0;
+  if(status === "in_stock" && Number(products[i].stock_qty || 0) <= 0) products[i].stock_qty = 1;
   const saved = await saveProductToSupabase(i);
-  if(!saved) products[i].stock_status = previousStatus;
+  if(!saved){
+    products[i].stock_status = previousStatus;
+    products[i].stock_qty = previousQty;
+  }
   renderDashboard();
+  renderProducts();
 }
 
 function addLocalProduct(){

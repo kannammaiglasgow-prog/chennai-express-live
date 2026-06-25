@@ -340,6 +340,10 @@ function stockLabel(p){
   return `${limit} in stock`;
 }
 
+function isProductSellable(p){
+  return !!p && p.stock === "In Stock" && stockLimit(p) > 0;
+}
+
 function refreshProductsFromAdminStore(){
   loadAdminProductOverrides();
 }
@@ -408,6 +412,7 @@ function validateCartStock(showAlert = true){
     const stockUnits = grams ? Math.floor(limit / (grams / 1000)) : limit;
     if(p.stock !== "In Stock" || limit <= 0){
       problems.push(`${p.name} is out of stock.`);
+      delete cart[key];
     }else if(Number.isFinite(stockUnits) && qty > stockUnits){
       problems.push(`${lineTitle({p, grams})}: only ${stockUnits} available, but cart has ${qty}.`);
       cart[key] = stockUnits;
@@ -440,7 +445,13 @@ function reduceStockAfterOrder(lines){
     if(!Number.isFinite(limit)) return;
     const stockQtyUsed = grams ? Number(qty || 0) * (grams / 1000) : Number(qty || 0);
     product.stock_qty = Math.max(0, Number((limit - stockQtyUsed).toFixed(3)));
-    if(product.stock_qty <= 0) product.stock = "Out of Stock";
+    if(product.stock_qty <= 0){
+      product.stock = "Out of Stock";
+      product.stock_status = "out_of_stock";
+    }else{
+      product.stock = "In Stock";
+      product.stock_status = product.stock_qty <= 3 ? "low_stock" : "in_stock";
+    }
   });
   saveCurrentProductsToAdminStore();
 }
@@ -613,7 +624,7 @@ function scrollToRewards(){ openCart(); }
 function card(p){
   const title = productTitle(p);
   const old = isSpecialOfferProduct(p) ? `<span class="old">${money(normalPriceOf(p))}</span>` : "";
-  const disabled = p.stock !== "In Stock";
+  const disabled = !isProductSellable(p);
   const qty = cartProductQty(p.id);
   const description = cleanPublicDescription(p.description);
   const qtyControl = disabled 
@@ -636,7 +647,7 @@ function card(p){
 }
 
 function renderMostOrdered(){
-  document.getElementById("mostOrdered").innerHTML = diverseProductList(PRODUCTS, "home-most-ordered").slice(0,12).map(card).join("");
+  document.getElementById("mostOrdered").innerHTML = diverseProductList(PRODUCTS.filter(isProductSellable), "home-most-ordered").slice(0,12).map(card).join("");
 }
 
 function offerCard(p){
@@ -685,7 +696,7 @@ function renderOfferSlider(){
     }
     return;
   }
-  const offers = PRODUCTS.filter(p => isSpecialOfferProduct(p) && p.stock === "In Stock");
+  const offers = PRODUCTS.filter(p => isSpecialOfferProduct(p) && isProductSellable(p));
   if(!offers.length){
     box.innerHTML = `<div class="slide active"><h2>Special Offer</h2><p>New offers coming soon.</p></div>`;
     return;
@@ -714,7 +725,7 @@ function renderOfferSlider(){
 
 
 function renderSpecialOffers(){
-  const offers = PRODUCTS.filter(p => isSpecialOfferProduct(p) && p.stock === "In Stock");
+  const offers = PRODUCTS.filter(p => isSpecialOfferProduct(p) && isProductSellable(p));
   const box = document.getElementById("specialOffersGrid");
   if(!box) return;
   box.innerHTML = offers.length ? offers.map(offerCard).join("") : "<p>No special product offers today.</p>";
@@ -734,7 +745,7 @@ function renderTopSearchResults(){
     box.classList.remove("show");
     return;
   }
-  const items = smartSearchProducts(rawQ, "All").slice(0,10);
+  const items = smartSearchProducts(rawQ, "All").filter(isProductSellable).slice(0,10);
   if(!items.length){
     box.innerHTML = `<div class="top-no-result">
       <b>No item found for "${rawQ}"</b>
@@ -774,7 +785,8 @@ function renderProducts(){
     return;
   }
 
-  const items = c === "All" ? diverseProductList(smartSearchProducts(rawQ, c), "all-products") : smartSearchProducts(rawQ, c);
+  const searchItems = smartSearchProducts(rawQ, c).filter(isProductSellable);
+  const items = c === "All" ? diverseProductList(searchItems, "all-products") : searchItems;
   document.getElementById("productGrid").innerHTML = items.map(card).join("") || `<p>${tr("cantFind")}</p>`;
 }
 
@@ -1507,7 +1519,7 @@ function relatedProductsFor(p){
   const TARGET_COUNT = 12;
   const MAX_RELATED = 9;
   const words = normaliseText([p.name, p.subcategory, cleanPublicDescription(p.description)].join(" ")).split(" ").filter(w=>w.length>3);
-  const available = PRODUCTS.filter(x=>x.id!==p.id && (!cart[x.id] || x.id===window.recentRelatedAddedId));
+  const available = PRODUCTS.filter(x=>x.id!==p.id && isProductSellable(x) && (!cart[x.id] || x.id===window.recentRelatedAddedId));
   let scored = available.map(x=>{
     const t = productText(x);
     let score = 0;
@@ -1554,7 +1566,7 @@ function openProductPage(id){
       <p class="detail-desc">${description}</p>
       ${freshVegWeightSelect(p)}
       <div class="detail-actions">
-        ${p.stock !== "In Stock" 
+        ${!isProductSellable(p)
           ? `<button class="disabled-detail" disabled>${tr("outOfStock")}</button>`
           : qty > 0
             ? `<div class="detail-qty"><button onclick="changeSelectedQty(event,${p.id},-1); refreshProductPageTop(${p.id})">-</button><b>${qty}</b><button onclick="addSelectedToCart(event,${p.id}); refreshProductPageTop(${p.id})">+</button></div>`
