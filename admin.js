@@ -6,7 +6,8 @@ const ADMIN_PRODUCTS_VERSION_KEY = "ce_admin_products_version";
 const ADMIN_PRODUCTS_FILE_VERSION = "20260624-json8-products";
 const ADMIN_REWARDS_STORAGE_KEY = "ce_rewards";
 const ACCOUNT_SETTINGS_STORAGE_KEY = "ce_account_settings";
-const DEFAULT_ORDER_WHATSAPP_NUMBER = normaliseWhatsAppNumber(window.CE_SITE_CONFIG && window.CE_SITE_CONFIG.whatsappNumber) || "447309736428";
+const LEGACY_ORDER_WHATSAPP_NUMBER = "447309736428";
+const DEFAULT_ORDER_WHATSAPP_NUMBER = normaliseWhatsAppNumber(window.CE_SITE_CONFIG && window.CE_SITE_CONFIG.whatsappNumber) || "447453398466";
 const DEFAULT_SUPPLIER = "Shanker & Co";
 
 function normaliseWhatsAppNumber(value){
@@ -19,8 +20,11 @@ function normaliseWhatsAppNumber(value){
 function loadAccountSettings(){
   try{
     const saved = JSON.parse(localStorage.getItem(ACCOUNT_SETTINGS_STORAGE_KEY) || "{}");
+    const savedNumber = normaliseWhatsAppNumber(saved.whatsappNumber);
     return {
-      whatsappNumber:normaliseWhatsAppNumber(saved.whatsappNumber) || DEFAULT_ORDER_WHATSAPP_NUMBER
+      whatsappNumber:savedNumber && savedNumber !== LEGACY_ORDER_WHATSAPP_NUMBER
+        ? savedNumber
+        : DEFAULT_ORDER_WHATSAPP_NUMBER
     };
   }catch(error){
     return {whatsappNumber:DEFAULT_ORDER_WHATSAPP_NUMBER};

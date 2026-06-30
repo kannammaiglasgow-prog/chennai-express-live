@@ -1,17 +1,20 @@
 ﻿const WHATSAPP_NUMBER = "447309736428";
 
 const ACCOUNT_SETTINGS_STORAGE_KEY = "ce_account_settings";
+const LEGACY_WHATSAPP_NUMBER = "447309736428";
+const DEFAULT_ORDER_WHATSAPP_NUMBER = "447453398466";
 
 function getOrderWhatsAppNumber(){
   try{
     const saved = JSON.parse(localStorage.getItem(ACCOUNT_SETTINGS_STORAGE_KEY) || "{}");
     const configured = window.CE_SITE_CONFIG && window.CE_SITE_CONFIG.whatsappNumber;
-    let digits = String(saved.whatsappNumber || configured || "").replace(/\D/g, "");
+    const savedNumber = String(saved.whatsappNumber || "").replace(/\D/g, "");
+    let digits = String(savedNumber && savedNumber !== LEGACY_WHATSAPP_NUMBER ? savedNumber : configured || "").replace(/\D/g, "");
     if(digits.startsWith("00")) digits = digits.slice(2);
     if(digits.startsWith("0")) digits = "44" + digits.slice(1);
-    return digits.length >= 10 && digits.length <= 15 ? digits : WHATSAPP_NUMBER;
+    return digits.length >= 10 && digits.length <= 15 ? digits : DEFAULT_ORDER_WHATSAPP_NUMBER;
   }catch(error){
-    return WHATSAPP_NUMBER;
+    return DEFAULT_ORDER_WHATSAPP_NUMBER;
   }
 }
 
