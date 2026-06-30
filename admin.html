@@ -18,6 +18,7 @@
   <button onclick="showTab('orders')">Orders</button>
   <button onclick="showTab('customers')">Customers</button>
   <button onclick="showTab('rewards')">Rewards</button>
+  <button onclick="showTab('account')">Account</button>
 </nav>
 
 <div id="adminError" class="admin-error"></div>
@@ -88,6 +89,22 @@
     <h2>Rewards Management</h2>
     <div id="rewardList"></div>
   </section>
+
+  <section id="account" class="tab">
+    <h2>Account Settings</h2>
+    <div class="card account-settings-card">
+      <h3>Order WhatsApp Number</h3>
+      <p>Customer orders and Contact Us messages will be sent to this number.</p>
+      <label for="accountWhatsappNumber">WhatsApp number</label>
+      <div class="form-grid account-settings-form">
+        <input id="accountWhatsappNumber" type="tel" inputmode="tel" placeholder="Example: 07309 736428 or +44 7309 736428">
+        <button type="button" onclick="saveAccountSettings()">Save Number</button>
+      </div>
+      <p id="accountWhatsappStatus" class="account-setting-status"></p>
+      <button type="button" class="dark account-download-button" onclick="downloadOnlineSettings()">Download Online Settings File</button>
+      <p class="account-setting-help">For all customer phones, upload the downloaded <b>site_config.js</b> file to GitHub and replace the old file.</p>
+    </div>
+  </section>
 </main>
 
 <footer>
@@ -96,7 +113,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase_config.js?v=20260622-admin-all-details-save"></script>
+<script src="site_config.js?v=20260630-whatsapp-account"></script>
 <script src="products.js?v=20260624-json8-products"></script>
-<script src="admin.js?v=20260625-stock-edit-sync"></script>
+<script src="admin.js?v=20260630-whatsapp-account"></script>
 </body>
 </html>

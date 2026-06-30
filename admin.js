@@ -5,7 +5,58 @@ const ADMIN_PRODUCTS_STORAGE_KEY = "ce_admin_products";
 const ADMIN_PRODUCTS_VERSION_KEY = "ce_admin_products_version";
 const ADMIN_PRODUCTS_FILE_VERSION = "20260624-json8-products";
 const ADMIN_REWARDS_STORAGE_KEY = "ce_rewards";
+const ACCOUNT_SETTINGS_STORAGE_KEY = "ce_account_settings";
+const DEFAULT_ORDER_WHATSAPP_NUMBER = normaliseWhatsAppNumber(window.CE_SITE_CONFIG && window.CE_SITE_CONFIG.whatsappNumber) || "447309736428";
 const DEFAULT_SUPPLIER = "Shanker & Co";
+
+function normaliseWhatsAppNumber(value){
+  let digits = String(value || "").replace(/\D/g, "");
+  if(digits.startsWith("00")) digits = digits.slice(2);
+  if(digits.startsWith("0")) digits = "44" + digits.slice(1);
+  return digits;
+}
+
+function loadAccountSettings(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(ACCOUNT_SETTINGS_STORAGE_KEY) || "{}");
+    return {
+      whatsappNumber:normaliseWhatsAppNumber(saved.whatsappNumber) || DEFAULT_ORDER_WHATSAPP_NUMBER
+    };
+  }catch(error){
+    return {whatsappNumber:DEFAULT_ORDER_WHATSAPP_NUMBER};
+  }
+}
+
+function renderAccountSettings(){
+  const input = document.getElementById("accountWhatsappNumber");
+  const status = document.getElementById("accountWhatsappStatus");
+  const settings = loadAccountSettings();
+  if(input) input.value = `+${settings.whatsappNumber}`;
+  if(status) status.textContent = `Current order number: +${settings.whatsappNumber}`;
+}
+
+function saveAccountSettings(){
+  const input = document.getElementById("accountWhatsappNumber");
+  const number = normaliseWhatsAppNumber(input ? input.value : "");
+  if(number.length < 10 || number.length > 15){
+    alert("Please enter a valid WhatsApp number, including the country code or a UK mobile number.");
+    return;
+  }
+  localStorage.setItem(ACCOUNT_SETTINGS_STORAGE_KEY, JSON.stringify({whatsappNumber:number}));
+  renderAccountSettings();
+  alert("WhatsApp order number saved.");
+}
+
+function downloadOnlineSettings(){
+  const settings = loadAccountSettings();
+  const source = `window.CE_SITE_CONFIG = Object.freeze({\n  whatsappNumber: "${settings.whatsappNumber}"\n});\n`;
+  const blob = new Blob([source], {type:"text/javascript"});
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "site_config.js";
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
 function showAdminError(message){
   const box = document.getElementById("adminError");
   if(box){
@@ -1515,6 +1566,7 @@ function downloadTemplate(){
 
 async function init(){
   try{
+    renderAccountSettings();
     renderOrders();
     renderCustomers();
     renderRewards();

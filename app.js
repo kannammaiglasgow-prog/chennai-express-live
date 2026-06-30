@@ -1,5 +1,20 @@
 ﻿const WHATSAPP_NUMBER = "447309736428";
 
+const ACCOUNT_SETTINGS_STORAGE_KEY = "ce_account_settings";
+
+function getOrderWhatsAppNumber(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(ACCOUNT_SETTINGS_STORAGE_KEY) || "{}");
+    const configured = window.CE_SITE_CONFIG && window.CE_SITE_CONFIG.whatsappNumber;
+    let digits = String(saved.whatsappNumber || configured || "").replace(/\D/g, "");
+    if(digits.startsWith("00")) digits = digits.slice(2);
+    if(digits.startsWith("0")) digits = "44" + digits.slice(1);
+    return digits.length >= 10 && digits.length <= 15 ? digits : WHATSAPP_NUMBER;
+  }catch(error){
+    return WHATSAPP_NUMBER;
+  }
+}
+
 const STORE_COLLECTION_INFO = {
   collectionPoint: "203 Willows Lane, Bolton, BL3 4AZ",
   collectionHours: "Tuesday - Sunday: 11:00 AM - 9:00 PM",
@@ -1419,7 +1434,7 @@ async function sendWhatsAppOrder(){
     msg += `\nThis is my order:\n${orderPageLink}\n`;
     msg += `\nThank you.`;
 
-    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+    const url = `https://wa.me/${getOrderWhatsAppNumber()}?text=${encodeURIComponent(msg)}`;
     window.open(url, "_blank");
     alert(`Order sent. Order ID: ${orderId}`);
     reduceStockAfterOrder(lines);
@@ -1664,7 +1679,7 @@ function closeProductPage(){
 
 function contactUsWhatsApp(){
   const msg = "Hello Chennai Express, I need help with my order.";
-  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
+  window.open(`https://wa.me/${getOrderWhatsAppNumber()}?text=${encodeURIComponent(msg)}`, "_blank");
 }
 
 
