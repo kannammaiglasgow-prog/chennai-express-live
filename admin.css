@@ -2,9 +2,52 @@
 *{box-sizing:border-box}
 html,body{max-width:100%;overflow-x:hidden}
 body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);margin:0;color:#111}
-header{background:#111;color:white;padding:18px}
+body.admin-locked > header,
+body.admin-locked > nav,
+body.admin-locked > #adminError,
+body.admin-locked > main,
+body.admin-locked > footer{display:none}
+.admin-login-screen{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  background:linear-gradient(145deg,#081b11,#0d4528 60%,#087a36);
+}
+.admin-login-screen[hidden]{display:none}
+.admin-login-card{
+  width:min(100%,420px);
+  padding:28px;
+  border-top:4px solid var(--red);
+  border-radius:8px;
+  background:#fff;
+  box-shadow:0 24px 70px #0006;
+}
+.admin-login-brand{
+  color:var(--red);
+  font-size:24px;
+  font-weight:900;
+}
+.admin-login-brand span{color:var(--green)}
+.admin-login-card h1{margin:18px 0 6px}
+.admin-login-card > p{color:#555}
+.admin-login-card label{display:block;margin:16px 0 6px;font-weight:800}
+.admin-login-card input{width:100%}
+.admin-login-card button{
+  width:100%;
+  margin-top:12px;
+  border:0;
+  border-radius:8px;
+  padding:13px;
+  background:var(--green);
+  color:#fff;
+  font-weight:900;
+}
+.admin-login-card .admin-login-message{min-height:20px;margin:12px 0 0;color:var(--red);font-weight:800}
+header{background:#111;color:white;padding:18px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 header h1{margin:0;color:#fff}
 header p{margin:5px 0 0;color:#ddd}
+.admin-logout{border:1px solid #fff5;background:transparent;color:#fff;border-radius:8px;padding:9px 13px;font-weight:800}
 nav{display:flex;gap:8px;overflow:auto;background:#fff;padding:10px;position:sticky;top:0;z-index:5;box-shadow:0 2px 10px #0001}
 nav button{border:0;background:#eaf7ef;color:var(--green);border-radius:999px;padding:10px 14px;font-weight:900;white-space:nowrap}
 main{max-width:1100px;margin:auto;padding:16px}
@@ -61,6 +104,7 @@ button{cursor:pointer}
 .green{background:#087a36;color:white}.red{background:#d10b14;color:white}.dark{background:#111;color:white}
 footer{text-align:center;color:#666;padding:20px}
 @media(max-width:700px){
+  .admin-login-card{padding:22px}
   header{padding:12px}
   header h1{font-size:22px;line-height:1.1}
   header p{font-size:14px}

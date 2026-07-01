@@ -18,6 +18,26 @@ function getOrderWhatsAppNumber(){
   }
 }
 
+function visitorCounterConfig(){
+  const config = window.CE_SITE_CONFIG && window.CE_SITE_CONFIG.visitorCounter;
+  if(!config || config.enabled === false) return null;
+  const namespace = String(config.namespace || "").replace(/[^a-zA-Z0-9_-]/g, "");
+  const name = String(config.name || "").replace(/[^a-zA-Z0-9_-]/g, "");
+  return namespace && name ? {namespace, name} : null;
+}
+
+async function trackWebsiteVisit(){
+  const config = visitorCounterConfig();
+  const isLocal = ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
+  if(!config || isLocal || sessionStorage.getItem("ce_visit_counted") === "1") return;
+  try{
+    const response = await fetch(`https://api.counterapi.dev/v1/${config.namespace}/${config.name}/up`, {cache:"no-store"});
+    if(response.ok) sessionStorage.setItem("ce_visit_counted", "1");
+  }catch(error){
+    console.warn("Visit counter is temporarily unavailable.");
+  }
+}
+
 const STORE_COLLECTION_INFO = {
   collectionPoint: "203 Willows Lane, Bolton, BL3 4AZ",
   collectionHours: "Tuesday - Sunday: 11:00 AM - 9:00 PM",
@@ -600,6 +620,7 @@ function loadAdminProductOverrides(){
 }
 
 function init(){
+  trackWebsiteVisit();
   loadAdminProductOverrides();
   const catBox = document.getElementById("categoryButtons");
   if(catBox){

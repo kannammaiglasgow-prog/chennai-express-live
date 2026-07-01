@@ -4,12 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chennai Express Admin Phase 1</title>
-<link rel="stylesheet" href="admin.css?v=20260622-admin-all-details-save">
+<link rel="stylesheet" href="admin.css?v=20260701-admin-login">
 </head>
-<body>
+<body class="admin-locked">
+<section id="adminLoginScreen" class="admin-login-screen">
+  <form class="admin-login-card" onsubmit="loginAdmin(event)">
+    <div class="admin-login-brand">CHENNAI <span>EXPRESS</span></div>
+    <h1>Admin Login</h1>
+    <p>Sign in to manage products and orders.</p>
+    <label for="adminLoginUsername">Username</label>
+    <input id="adminLoginUsername" name="username" autocomplete="username" required>
+    <label for="adminLoginPassword">Password</label>
+    <input id="adminLoginPassword" name="password" type="password" autocomplete="current-password" required>
+    <p id="adminLoginMessage" class="admin-login-message" aria-live="polite"></p>
+    <button type="submit">Login</button>
+  </form>
+</section>
 <header>
-  <h1>Chennai Express Admin</h1>
-  <p>Backend Phase 1 Starter</p>
+  <div>
+    <h1>Chennai Express Admin</h1>
+    <p>Backend Phase 1 Starter</p>
+  </div>
+  <button class="admin-logout" type="button" onclick="logoutAdmin()">Logout</button>
 </header>
 
 <nav>
@@ -31,6 +47,7 @@
       <div class="card"><b>Pending Orders</b><span id="pendingOrders">0</span></div>
       <button class="card dashboard-card" type="button" onclick="openOutOfStockProducts()"><b>Out of Stock</b><span id="outStock">0</span></button>
       <div class="card"><b>Reward Claims</b><span id="rewardClaims">0</span></div>
+      <div class="card"><b>Website Visits</b><span id="websiteVisits">Loading...</span></div>
     </div>
   </section>
 
@@ -113,8 +130,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase_config.js?v=20260622-admin-all-details-save"></script>
-<script src="site_config.js?v=20260630-whatsapp-447453398466"></script>
+<script src="site_config.js?v=20260701-web-counter"></script>
 <script src="products.js?v=20260624-json8-products"></script>
-<script src="admin.js?v=20260630-whatsapp-447453398466"></script>
+<script src="admin-auth.js?v=20260701-admin-login"></script>
+<script src="admin.js?v=20260701-web-counter"></script>
 </body>
 </html>

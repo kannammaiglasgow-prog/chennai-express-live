@@ -1,5 +1,6 @@
 ﻿
 let products = [];
+let adminAppStarted = false;
 let pendingImageUpload = null;
 const ADMIN_PRODUCTS_STORAGE_KEY = "ce_admin_products";
 const ADMIN_PRODUCTS_VERSION_KEY = "ce_admin_products_version";
@@ -54,7 +55,8 @@ function saveAccountSettings(){
 function downloadOnlineSettings(){
   const settings = loadAccountSettings();
   const publicSiteUrl = String(window.CE_SITE_CONFIG && window.CE_SITE_CONFIG.publicSiteUrl || "https://kannammaiglasgow-prog.github.io/chennai-express-live");
-  const source = `window.CE_SITE_CONFIG = Object.freeze({\n  whatsappNumber: "${settings.whatsappNumber}",\n  publicSiteUrl: "${publicSiteUrl}"\n});\n`;
+  const counter = window.CE_SITE_CONFIG && window.CE_SITE_CONFIG.visitorCounter || {};
+  const source = `window.CE_SITE_CONFIG = Object.freeze({\n  whatsappNumber: "${settings.whatsappNumber}",\n  publicSiteUrl: "${publicSiteUrl}",\n  visitorCounter: Object.freeze({\n    enabled: ${counter.enabled !== false},\n    namespace: "${counter.namespace || "chennai-express-live-kannammaiglasgow-prog"}",\n    name: "${counter.name || "website-visits"}"\n  })\n});\n`;
   const blob = new Blob([source], {type:"text/javascript"});
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
@@ -69,6 +71,46 @@ function showAdminError(message){
     box.classList.add("show");
   }else{
     alert(message);
+  }
+}
+
+function visitorCounterConfig(){
+  const config = window.CE_SITE_CONFIG && window.CE_SITE_CONFIG.visitorCounter;
+  if(!config || config.enabled === false) return null;
+  const namespace = String(config.namespace || "").replace(/[^a-zA-Z0-9_-]/g, "");
+  const name = String(config.name || "").replace(/[^a-zA-Z0-9_-]/g, "");
+  return namespace && name ? {namespace, name} : null;
+}
+
+function counterNumberFromResponse(data){
+  const value = data && typeof data === "object"
+    ? (data.count ?? data.value ?? data.data ?? data.result)
+    : data;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+async function loadWebsiteVisitCounter(){
+  const display = document.getElementById("websiteVisits");
+  if(!display) return;
+  const config = visitorCounterConfig();
+  if(!config){
+    display.textContent = "Off";
+    return;
+  }
+  try{
+    const response = await fetch(`https://api.counterapi.dev/v1/${config.namespace}/${config.name}/`, {cache:"no-store"});
+    if(response.status === 404){
+      display.textContent = "0";
+      return;
+    }
+    if(!response.ok) throw new Error("Counter unavailable");
+    const count = counterNumberFromResponse(await response.json());
+    if(count === null) throw new Error("Invalid counter response");
+    display.textContent = count.toLocaleString("en-GB");
+  }catch(error){
+    display.textContent = "Unavailable";
+    display.title = "Visitor counter could not connect. Refresh later.";
   }
 }
 
@@ -1570,11 +1612,14 @@ function downloadTemplate(){
 }
 
 async function init(){
+  if(window.CE_ADMIN_AUTHENTICATED !== true || adminAppStarted) return;
+  adminAppStarted = true;
   try{
     renderAccountSettings();
     renderOrders();
     renderCustomers();
     renderRewards();
+    loadWebsiteVisitCounter();
     await loadOrdersFromSupabase();
     await loadProductsFromSupabase();
   }catch(error){
@@ -1583,6 +1628,8 @@ async function init(){
     loadLocalProductsFallback("Showing local products after an admin loading issue.");
   }
 }
+
+window.startAdminApp = init;
 
 if(document.readyState === "loading"){
   document.addEventListener("DOMContentLoaded", init);
