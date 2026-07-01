@@ -53,7 +53,8 @@ function saveAccountSettings(){
 
 function downloadOnlineSettings(){
   const settings = loadAccountSettings();
-  const source = `window.CE_SITE_CONFIG = Object.freeze({\n  whatsappNumber: "${settings.whatsappNumber}"\n});\n`;
+  const publicSiteUrl = String(window.CE_SITE_CONFIG && window.CE_SITE_CONFIG.publicSiteUrl || "https://kannammaiglasgow-prog.github.io/chennai-express-live");
+  const source = `window.CE_SITE_CONFIG = Object.freeze({\n  whatsappNumber: "${settings.whatsappNumber}",\n  publicSiteUrl: "${publicSiteUrl}"\n});\n`;
   const blob = new Blob([source], {type:"text/javascript"});
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);

@@ -10,6 +10,9 @@
   const path = window.location.pathname.toLowerCase();
   if(path.includes("/admin")){
     window.location.replace(base + "admin.html");
+  }else if(path.includes("/product/")){
+    const productSlug = path.split("/product/")[1].split("/")[0];
+    window.location.replace(base + "index.html?product=" + encodeURIComponent(productSlug));
   }else{
     window.location.replace(base);
   }

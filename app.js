@@ -277,6 +277,97 @@ function productTitle(p){
   if(!pack) return name;
   return compactText(name).includes(compactText(pack)) ? name : `${name} - ${pack}`;
 }
+
+function productSlug(p){
+  return String((p && p.name) || "product")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || `product-${p && p.id || "item"}`;
+}
+
+function publicSiteBaseUrl(){
+  const configured = String(window.CE_SITE_CONFIG && window.CE_SITE_CONFIG.publicSiteUrl || "").replace(/\/+$/, "");
+  if(configured) return configured;
+  if(window.location.protocol === "http:" || window.location.protocol === "https:"){
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    const repo = window.location.hostname.endsWith("github.io") && parts.length ? `/${parts[0]}` : "";
+    return `${window.location.origin}${repo}`;
+  }
+  return "https://kannammaiglasgow-prog.github.io/chennai-express-live";
+}
+
+function productShareUrl(p){
+  return `${publicSiteBaseUrl()}/product/${encodeURIComponent(productSlug(p))}/`;
+}
+
+function productShareText(p){
+  const offer = isSpecialOfferProduct(p)
+    ? `Special offer - was ${money(normalPriceOf(p))}, now ${money(priceOf(p))}`
+    : (cleanPublicDescription(p.description) || "Order now from Chennai Express");
+  return `${productTitle(p)} - ${money(priceOf(p))}\n${offer}`;
+}
+
+async function copyProductShareLink(p){
+  const text = `${productShareText(p)}\n${productShareUrl(p)}`;
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+    }else{
+      const field = document.createElement("textarea");
+      field.value = text;
+      field.style.position = "fixed";
+      field.style.opacity = "0";
+      document.body.appendChild(field);
+      field.select();
+      document.execCommand("copy");
+      field.remove();
+    }
+    showToast("Product link copied. You can paste it in WhatsApp or Facebook.");
+  }catch(error){
+    window.prompt("Copy this product link:", productShareUrl(p));
+  }
+}
+
+async function shareProduct(event, id){
+  if(event) event.stopPropagation();
+  const p = PRODUCTS.find(x => x.id == id);
+  if(!p) return;
+  const data = {
+    title:`${productTitle(p)} - ${money(priceOf(p))}`,
+    text:productShareText(p),
+    url:productShareUrl(p)
+  };
+  if(navigator.share){
+    try{
+      await navigator.share(data);
+      return;
+    }catch(error){
+      if(error && error.name === "AbortError") return;
+    }
+  }
+  await copyProductShareLink(p);
+}
+
+function orderSingleProductOnWhatsApp(event, id){
+  if(event) event.stopPropagation();
+  const p = PRODUCTS.find(x => x.id == id);
+  if(!p || !isProductSellable(p)) return;
+  const msg = `Hello Chennai Express, I would like to order:\n\n${productShareText(p)}\n${productShareUrl(p)}`;
+  window.open(`https://wa.me/${getOrderWhatsAppNumber()}?text=${encodeURIComponent(msg)}`, "_blank");
+}
+
+function openRequestedProductFromUrl(){
+  const params = new URLSearchParams(window.location.search);
+  let slug = params.get("product") || "";
+  if(!slug){
+    const match = window.location.pathname.match(/\/product\/([^/]+)/i);
+    slug = match ? decodeURIComponent(match[1]) : "";
+  }
+  if(!slug) return;
+  const p = PRODUCTS.find(item => productSlug(item) === slug);
+  if(p) setTimeout(() => openProductPage(p.id), 0);
+}
 async function saveOrderToSupabase(orderData){
   if(!window.ceSupabase){
     return {ok:false, message:"Supabase is not connected."};
@@ -522,6 +613,7 @@ function init(){
   renderProducts();
   updateCartCount();
   updatePaymentBox();
+  openRequestedProductFromUrl();
 }
 function iconFor(c){
   if(c.includes("Restaurant")) return "Food";
@@ -660,6 +752,7 @@ function card(p){
     <div class="pack">${stockLabel(p)}</div>
     <div class="price-line"><span class="price" data-weight-price>${money(priceOf(p))}</span>${old}</div>
     ${freshVegWeightSelect(p)}
+    <button class="product-share" type="button" onclick="shareProduct(event,${p.id})" aria-label="Share ${escapeHtmlText(title)}">Share</button>
     ${qtyControl}
   </div>`;
 }
@@ -677,6 +770,7 @@ function offerCard(p){
       <b>${title}</b>
       <p>${description}</p>
       <div><span class="was">Was ${money(normalPriceOf(p))}</span> <span class="now">Now ${money(priceOf(p))}</span></div>
+      <button class="product-share" type="button" onclick="shareProduct(event,${p.id})">Share</button>
       <button onclick="addToCart(${p.id})">${tr("addOffer")}</button>
     </div>
   </div>`;
@@ -789,6 +883,7 @@ function searchResultRow(p){
     <img class="clickable" src="${p.image}" alt="${title}" referrerpolicy="no-referrer" loading="lazy" decoding="async" onclick="openProductPage(${p.id})">
     <div><b class="clickable" onclick="openProductPage(${p.id})">${title}</b><br><small>${p.subcategory} - ${p.pack}</small><br><span data-weight-price>${money(priceOf(p))}</span></div>
     ${freshVegWeightSelect(p)}
+    <button class="product-share" type="button" onclick="shareProduct(event,${p.id})">Share</button>
     ${qty>0 ? `<div class="mini-qty"><button onclick="changeSelectedQty(event,${p.id},-1)">-</button><b>${qty}</b><button onclick="addSelectedToCart(event,${p.id})">+</button></div>` : `<button onclick="addSelectedToCart(event,${p.id})">${tr("add")}</button>`}
   </div>`;
 }
@@ -1590,6 +1685,8 @@ function openProductPage(id){
             ? `<div class="detail-qty"><button onclick="changeSelectedQty(event,${p.id},-1); refreshProductPageTop(${p.id})">-</button><b>${qty}</b><button onclick="addSelectedToCart(event,${p.id}); refreshProductPageTop(${p.id})">+</button></div>`
             : `<button class="detail-add" onclick="addSelectedToCart(event,${p.id}); refreshProductPageTop(${p.id})">${tr("addToCart")}</button>`
         }
+        <button class="detail-share" type="button" onclick="shareProduct(event,${p.id})">Share</button>
+        <button class="detail-whatsapp" type="button" onclick="orderSingleProductOnWhatsApp(event,${p.id})" ${!isProductSellable(p)?"disabled":""}>Order on WhatsApp</button>
       </div>
       <h2 id="recommendedItemsHeading">Recommended Items</h2>
       <div class="detail-related">
@@ -1615,6 +1712,7 @@ function relatedCard(r){
       <b onclick="openProductPageFromRelated(${r.id})">${title}</b>
       <span data-weight-price>${money(priceOf(r))}</span>
       ${freshVegWeightSelect(r)}
+      <button class="product-share" type="button" onclick="shareProduct(event,${r.id})">Share</button>
       ${qty>0 
         ? `<div class="related-qty">
             <button onclick="event.stopPropagation(); window.recentRelatedAddedId=${r.id}; changeSelectedQty(event,${r.id},-1); refreshProductPageKeepRelated(window.currentProductDetailId)">-</button>
@@ -1678,6 +1776,12 @@ function closeProductPage(){
   const modal = document.getElementById("productModal");
   if(modal) modal.classList.remove("show");
   document.body.style.overflow = "";
+  const params = new URLSearchParams(window.location.search);
+  if(params.has("product")){
+    params.delete("product");
+    const query = params.toString();
+    window.history.replaceState({}, "", window.location.pathname + (query ? `?${query}` : ""));
+  }
 }
 
 function contactUsWhatsApp(){
